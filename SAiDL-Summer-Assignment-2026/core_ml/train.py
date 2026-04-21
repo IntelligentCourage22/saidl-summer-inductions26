@@ -1,107 +1,228 @@
+import argparse
+import json
+import math
+import random
+import time
+from pathlib import Path
+from types import SimpleNamespace
 
-import sys, os
-sys.path.insert(0, os.path.dirname(__file__))
+import torch
+import yaml
 
-import torch, wandb, math
-from omegaconf import OmegaConf
-from torch.optim.lr_scheduler import CosineAnnealingLR, LinearLR, SequentialLR
-
-from data.dataset   import get_dataloaders
-from models.model   import TransformerLM
-from utils.metrics  import MetricsTracker, compute_grad_norm
+from core_ml.data.dataset import get_dataloaders
+from core_ml.models.model import TransformerLM
+from core_ml.utils.metrics import MetricsTracker, compute_grad_norm
 
 
-def evaluate(model, val_loader, device):
+def to_namespace(value):
+    if isinstance(value, dict):
+        return SimpleNamespace(**{key: to_namespace(val) for key, val in value.items()})
+    if isinstance(value, list):
+        return [to_namespace(item) for item in value]
+    return value
+
+
+def set_nested(config, dotted_key, value):
+    current = config
+    parts = dotted_key.split(".")
+    for part in parts[:-1]:
+        current = current.setdefault(part, {})
+    current[parts[-1]] = value
+
+
+def parse_args():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--config", default="core_ml/configs/config.yaml")
+    parser.add_argument(
+        "--set",
+        action="append",
+        default=[],
+        help="Override config values, e.g. --set model.attention_type=gqa",
+    )
+    return parser.parse_args()
+
+
+def load_config(path, overrides):
+    with open(path, "r", encoding="utf-8") as handle:
+        config = yaml.safe_load(handle)
+
+    for override in overrides:
+        if "=" not in override:
+            raise ValueError(f"Invalid override {override!r}; expected key=value.")
+        key, raw_value = override.split("=", 1)
+        set_nested(config, key, yaml.safe_load(raw_value))
+
+    return config
+
+
+def set_seed(seed):
+    random.seed(seed)
+    torch.manual_seed(seed)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed_all(seed)
+
+
+@torch.no_grad()
+def evaluate(model, loader, device, max_batches=None):
     model.eval()
     tracker = MetricsTracker()
-    with torch.no_grad():
-        for x, y in val_loader:
-            x, y = x.to(device), y.to(device)
-            _, loss = model(x, y)
-            if loss.dim() > 0: loss = loss.mean()
-            tracker.update(loss.item(), x.numel())
-    model.train()
-    return {"val_loss": tracker.total_loss/tracker.total_tokens,
-            "val_perplexity": tracker.get_perplexity(),
-            "peak_memory_mb": tracker.get_peak_memory_mb()}
+
+    for batch_idx, (x, y) in enumerate(loader):
+        if max_batches is not None and batch_idx >= max_batches:
+            break
+        x = x.to(device, non_blocking=True)
+        y = y.to(device, non_blocking=True)
+        _, loss = model(x, y)
+        tracker.update(loss.item(), x.numel())
+
+    return tracker.get_summary()
 
 
-def train(cfg):
-    torch.manual_seed(cfg.training.seed)
-    torch.cuda.manual_seed_all(cfg.training.seed)
+def save_checkpoint(path, model, optimizer, scheduler, step, config):
+    path.parent.mkdir(parents=True, exist_ok=True)
+    torch.save(
+        {
+            "model": model.state_dict(),
+            "optimizer": optimizer.state_dict(),
+            "scheduler": scheduler.state_dict(),
+            "step": step,
+            "config": config,
+        },
+        path,
+    )
+
+
+def maybe_init_wandb(config):
+    if not config.get("wandb", {}).get("enabled", False):
+        return None
+
+    import wandb
+
+    return wandb.init(
+        project=config["wandb"]["project"],
+        entity=config["wandb"].get("entity"),
+        config=config,
+    )
+
+
+def build_scheduler(optimizer, warmup_steps, total_steps):
+    def lr_lambda(step):
+        if warmup_steps > 0 and step < warmup_steps:
+            return max(1, step) / warmup_steps
+
+        progress = (step - warmup_steps) / max(1, total_steps - warmup_steps)
+        progress = min(max(progress, 0.0), 1.0)
+        return 0.5 * (1.0 + math.cos(math.pi * progress))
+
+    return torch.optim.lr_scheduler.LambdaLR(optimizer, lr_lambda)
+
+
+def main():
+    args = parse_args()
+    config = load_config(args.config, args.set)
+    cfg = to_namespace(config)
+
+    set_seed(cfg.training.seed)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    print(f"Device: {device} | GPUs: {torch.cuda.device_count()}")
+    output_dir = Path(cfg.training.output_dir)
+    checkpoint_dir = Path(cfg.training.checkpoint_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    checkpoint_dir.mkdir(parents=True, exist_ok=True)
 
-    run_name = f"{cfg.model.attention_type}_{cfg.model.positional_encoding}_{cfg.model.block_type}_ctx{cfg.training.seq_len}"
-
-    wandb.init(project=cfg.wandb.project, name=run_name,
-               config=OmegaConf.to_container(cfg, resolve=True),
-               tags=[cfg.model.attention_type, cfg.model.positional_encoding, f"ctx_{cfg.training.seq_len}"])
-
-    print("Loading data...")
-    train_loader, val_loader, _ = get_dataloaders(cfg.training.seq_len, cfg.training.batch_size, cfg.data.num_workers)
-    print(f"Train: {len(train_loader)} batches | Val: {len(val_loader)} batches")
+    train_loader, val_loader, test_loader = get_dataloaders(
+        seq_len=cfg.training.seq_len,
+        batch_size=cfg.training.batch_size,
+        num_workers=cfg.data.num_workers,
+        dataset_name=cfg.data.dataset_name,
+        dataset_config=cfg.data.dataset_config,
+        tokenizer_name=cfg.data.tokenizer_name,
+    )
 
     model = TransformerLM(cfg).to(device)
-    if torch.cuda.device_count() > 1:
-        model = torch.nn.DataParallel(model)
-    print(f"Parameters: {sum(p.numel() for p in model.parameters() if p.requires_grad):,}")
+    optimizer = torch.optim.AdamW(
+        model.parameters(), lr=cfg.training.learning_rate, betas=(0.9, 0.95)
+    )
+    total_steps = cfg.training.max_steps or (cfg.training.num_epochs * len(train_loader))
+    scheduler = build_scheduler(optimizer, cfg.training.warmup_steps, total_steps)
+    run = maybe_init_wandb(config)
 
-    optimizer = torch.optim.AdamW(model.parameters(), lr=cfg.training.learning_rate, betas=(0.9,0.95), weight_decay=0.1)
-    total_steps = len(train_loader) * cfg.training.num_epochs
-    scheduler = SequentialLR(optimizer,
-        schedulers=[
-            LinearLR(optimizer, start_factor=0.01, end_factor=1.0, total_iters=cfg.training.warmup_steps),
-            CosineAnnealingLR(optimizer, T_max=total_steps - cfg.training.warmup_steps, eta_min=1e-5)
-        ], milestones=[cfg.training.warmup_steps])
+    global_step = 0
+    train_tracker = MetricsTracker()
+    start_time = time.time()
+    metrics_path = output_dir / "metrics.jsonl"
 
-    os.makedirs("/kaggle/working/checkpoints", exist_ok=True)
-    global_step, best_val_ppl = 0, float("inf")
+    with open(metrics_path, "a", encoding="utf-8") as metrics_file:
+        for epoch in range(cfg.training.num_epochs):
+            model.train()
+            for x, y in train_loader:
+                x = x.to(device, non_blocking=True)
+                y = y.to(device, non_blocking=True)
 
-    for epoch in range(cfg.training.num_epochs):
-        tracker = MetricsTracker()
-        model.train()
-        for x, y in train_loader:
-            x, y = x.to(device), y.to(device)
-            _, loss = model(x, y)
-            if loss.dim() > 0: loss = loss.mean()
-            optimizer.zero_grad()
-            loss.backward()
-            grad_norm = compute_grad_norm(model)
-            torch.nn.utils.clip_grad_norm_(model.parameters(), cfg.training.grad_clip)
-            optimizer.step()
-            scheduler.step()
-            tracker.update(loss.item(), x.numel())
-            global_step += 1
+                optimizer.zero_grad(set_to_none=True)
+                _, loss = model(x, y)
+                loss.backward()
+                grad_norm = compute_grad_norm(model)
+                torch.nn.utils.clip_grad_norm_(model.parameters(), cfg.training.grad_clip)
+                optimizer.step()
+                scheduler.step()
 
-            if global_step % 50 == 0:
-                lr = scheduler.get_last_lr()[0]
-                wandb.log({"train/loss": loss.item(), "train/perplexity": math.exp(min(loss.item(),100)),
-                           "train/grad_norm": grad_norm, "train/lr": lr,
-                           "train/throughput": tracker.get_throughput(),
-                           "train/memory_mb": tracker.get_peak_memory_mb()}, step=global_step)
-            if global_step % 200 == 0:
-                print(f"Step {global_step:5d} | loss {loss.item():.4f} | lr {scheduler.get_last_lr()[0]:.2e} | ppl {math.exp(min(loss.item(),100)):.1f}")
+                global_step += 1
+                train_tracker.update(loss.item(), x.numel())
 
-            if global_step % cfg.training.eval_every == 0:
-                vm = evaluate(model, val_loader, device)
-                print(f"\n>>> Step {global_step} | val_loss {vm['val_loss']:.4f} | val_ppl {vm['val_perplexity']:.2f} | mem {vm['peak_memory_mb']:.0f}MB")
-                wandb.log({"val/loss": vm["val_loss"], "val/perplexity": vm["val_perplexity"], "val/memory_mb": vm["peak_memory_mb"]}, step=global_step)
-                if vm["val_perplexity"] < best_val_ppl:
-                    best_val_ppl = vm["val_perplexity"]
-                    raw = model.module if hasattr(model, "module") else model
-                    torch.save({"step": global_step, "model": raw.state_dict(), "val_ppl": best_val_ppl,
-                                "cfg": OmegaConf.to_container(cfg)}, f"/kaggle/working/checkpoints/best_{run_name}.pt")
-                    print(f"  ✓ Saved best (ppl={best_val_ppl:.2f})")
+                if global_step % cfg.training.eval_every == 0:
+                    train_summary = train_tracker.get_summary()
+                    val_summary = evaluate(
+                        model, val_loader, device, cfg.training.eval_batches
+                    )
+                    record = {
+                        "step": global_step,
+                        "epoch": epoch,
+                        "grad_norm": grad_norm,
+                        "lr": scheduler.get_last_lr()[0],
+                        "elapsed_sec": time.time() - start_time,
+                        "train": train_summary,
+                        "validation": val_summary,
+                        "model": {
+                            "attention_type": cfg.model.attention_type,
+                            "positional_encoding": cfg.model.positional_encoding,
+                            "block_type": cfg.model.block_type,
+                        },
+                    }
+                    metrics_file.write(json.dumps(record) + "\n")
+                    metrics_file.flush()
+                    if run is not None:
+                        run.log(record, step=global_step)
+                    train_tracker.reset()
+                    model.train()
 
-        s = tracker.get_summary()
-        print(f"\nEpoch {epoch+1}/{cfg.training.num_epochs} | train_ppl {s['perplexity']:.2f} | {s['throughput_tps']:.0f} tok/s | {s['peak_memory_mb']:.0f}MB\n")
-        wandb.log({"epoch/train_perplexity": s["perplexity"], "epoch/throughput": s["throughput_tps"], "epoch": epoch+1})
+                if global_step % cfg.training.save_every == 0:
+                    save_checkpoint(
+                        checkpoint_dir / f"step_{global_step}.pt",
+                        model,
+                        optimizer,
+                        scheduler,
+                        global_step,
+                        config,
+                    )
 
-    wandb.finish()
-    print(f"Done. Best val ppl: {best_val_ppl:.2f}")
-    return best_val_ppl
+                if cfg.training.max_steps and global_step >= cfg.training.max_steps:
+                    break
+
+            if cfg.training.max_steps and global_step >= cfg.training.max_steps:
+                break
+
+    final_val = evaluate(model, val_loader, device, cfg.training.eval_batches)
+    final_test = evaluate(model, test_loader, device, cfg.training.eval_batches)
+    final_record = {"validation": final_val, "test": final_test, "step": global_step}
+    with open(output_dir / "final_metrics.json", "w", encoding="utf-8") as handle:
+        json.dump(final_record, handle, indent=2)
+
+    save_checkpoint(
+        checkpoint_dir / "final.pt", model, optimizer, scheduler, global_step, config
+    )
+    if run is not None:
+        run.finish()
+
 
 if __name__ == "__main__":
-    cfg = OmegaConf.load(os.path.join(os.path.dirname(__file__), "configs", "config.yaml"))
-    train(cfg)
+    main()

@@ -1,0 +1,126 @@
+\documentclass{article}
+\usepackage[margin=1in]{geometry}
+\usepackage{booktabs}
+\usepackage{graphicx}
+\usepackage{hyperref}
+\usepackage{amsmath}
+
+\title{Core ML: Modular Long-Context Sequence Modeling}
+\author{Ansh}
+\date{SAiDL Summer Assignment 2026}
+
+\begin{document}
+\maketitle
+
+\section{Overview}
+
+This report studies long-context sequence modeling on WikiText-2 using a modular
+Transformer language model. The codebase allows independent swaps of attention
+mechanisms, positional encodings, and convolution-attention hybrid blocks.
+
+\section{Baseline}
+
+\subsection{Architecture}
+
+The baseline is a pre-normalized causal Transformer language model with tied
+token embedding and language-model head weights. The default configuration uses
+a context length of 1024 tokens, embedding dimension 512, 8 heads, 6 layers, and
+a feed-forward dimension of 2048.
+
+\subsection{Training Setup}
+
+\begin{itemize}
+    \item Dataset: WikiText-2 raw.
+    \item Tokenizer: GPT-2 tokenizer.
+    \item Optimizer: AdamW.
+    \item Logged metrics: training loss, validation loss, validation perplexity,
+    peak GPU memory, throughput, and elapsed time.
+\end{itemize}
+
+\begin{table}[h]
+\centering
+\begin{tabular}{lrrrrr}
+\toprule
+Model & Context & Val Loss & Val PPL & Tokens/sec & Peak Memory MB \\
+\midrule
+Standard + Sinusoidal & 1024 & -- & -- & -- & -- \\
+\bottomrule
+\end{tabular}
+\caption{Baseline results.}
+\end{table}
+
+\section{Attention Variants}
+
+The implemented attention variants are standard causal self-attention, sliding
+window attention, linear kernelized attention, multi-query attention, and
+grouped-query attention.
+
+\begin{table}[h]
+\centering
+\begin{tabular}{llrrrr}
+\toprule
+Attention & Context & Val PPL & Tokens/sec & Peak Memory MB & Notes \\
+\midrule
+Standard & 512 & -- & -- & -- & -- \\
+Sliding Window & 512 & -- & -- & -- & -- \\
+Linear & 512 & -- & -- & -- & -- \\
+GQA & 512 & -- & -- & -- & -- \\
+\bottomrule
+\end{tabular}
+\caption{Attention ablation results.}
+\end{table}
+
+\section{Positional Encodings}
+
+The implemented positional choices are sinusoidal positional encodings, rotary
+positional embeddings, ALiBi, and learned relative position bias. The planned
+extrapolation test trains with $L_{\mathrm{train}}=512$ and evaluates at
+$L_{\mathrm{test}}\in\{512,1024,2048\}$.
+
+\begin{table}[h]
+\centering
+\begin{tabular}{lrrrr}
+\toprule
+Position Method & Train Context & Test Context & Val PPL & Notes \\
+\midrule
+Sinusoidal & 512 & 512 & -- & -- \\
+RoPE & 512 & 1024 & -- & -- \\
+ALiBi & 512 & 2048 & -- & -- \\
+Relative Bias & 512 & 2048 & -- & -- \\
+\bottomrule
+\end{tabular}
+\caption{Positional extrapolation results.}
+\end{table}
+
+\section{Convolution-Attention Hybrids}
+
+Two hybrid designs are implemented: a depthwise convolution branch before each
+attention layer, and a gated convolutional feed-forward block. These are tested
+with the best attention and positional encoding from the earlier ablations.
+
+\begin{table}[h]
+\centering
+\begin{tabular}{lrrrr}
+\toprule
+Block Type & Val PPL & Tokens/sec & Peak Memory MB & Notes \\
+\midrule
+Standard & -- & -- & -- & -- \\
+Conv Before Attention & -- & -- & -- & -- \\
+Gated Conv FFN & -- & -- & -- & -- \\
+\bottomrule
+\end{tabular}
+\caption{Hybrid architecture results.}
+\end{table}
+
+\section{Analysis}
+
+Discuss which variants improve perplexity, which improve efficiency, and which
+are unstable. Include observations about memory scaling across context lengths
+and whether positional methods extrapolate beyond the training context.
+
+\section{Conclusion}
+
+Summarize the best model, the most compute-efficient model, and the main lessons
+from the ablation study.
+
+\end{document}

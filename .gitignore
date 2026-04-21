@@ -4,7 +4,16 @@ __pycache__/
 .ipynb_checkpoints/
 .virtual_documents/
 *.egg-info/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.venv/
+.env
 wandb/
 outputs/
 checkpoints/
 *.ipynb
+*.aux
+*.log
+*.out
+*.synctex.gz
