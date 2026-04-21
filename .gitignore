@@ -1,0 +1,10 @@
+__pycache__/
+*.pyc
+*.pyo
+.ipynb_checkpoints/
+.virtual_documents/
+*.egg-info/
+wandb/
+outputs/
+checkpoints/
+*.ipynb
