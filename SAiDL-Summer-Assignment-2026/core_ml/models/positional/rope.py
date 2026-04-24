@@ -31,5 +31,5 @@ class RotaryEmbedding(nn.Module):
         x_odd = x[..., 1::2]
         out = torch.empty_like(x)
         out[..., 0::2] = x_even * cos - x_odd * sin
-        out[..., 1::2] = x_even * sin + x_odd * cos
+        out[..., 1::2] = x_odd * cos + x_even * sin
         return out

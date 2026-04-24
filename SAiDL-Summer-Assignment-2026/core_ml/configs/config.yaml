@@ -22,7 +22,7 @@ training:
   grad_clip: 1.0
   seq_len: 1024
   eval_every: 500
-  eval_batches: 50
+  eval_batches: null    # set to 50 for fast iteration, null for final reported numbers
   save_every: 1000
   max_steps: null
   seed: 42
@@ -36,6 +36,6 @@ data:
   num_workers: 2
 
 wandb:
-  enabled: false
+  enabled: true
   project: "SAiDL-LongContext"
   entity: ansh0   #wandb username here

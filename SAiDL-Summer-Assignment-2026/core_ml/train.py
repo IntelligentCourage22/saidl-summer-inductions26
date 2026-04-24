@@ -153,6 +153,7 @@ def main():
 
     with open(metrics_path, "a", encoding="utf-8") as metrics_file:
         for epoch in range(cfg.training.num_epochs):
+            epoch_start = time.time()
             model.train()
             for x, y in train_loader:
                 x = x.to(device, non_blocking=True)
@@ -177,6 +178,7 @@ def main():
                     record = {
                         "step": global_step,
                         "epoch": epoch,
+                        "epoch_time_sec": time.time() - epoch_start,
                         "grad_norm": grad_norm,
                         "lr": scheduler.get_last_lr()[0],
                         "elapsed_sec": time.time() - start_time,

@@ -40,6 +40,7 @@ class LinearAttention(nn.Module):
         return F.elu(x) + 1
 
     def forward(self, x, mask=None):
+        # mask is unused: causality is enforced via cumsum, not explicit masking
         batch_size, seq_len, d_model = x.shape
 
         q = self.q_proj(x).view(batch_size, seq_len, self.n_heads, self.d_head)
