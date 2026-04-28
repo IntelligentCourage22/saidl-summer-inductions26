@@ -4,9 +4,9 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from core_ml.models.positional.alibi import AlibiBias
-from core_ml.models.positional.relative import RelativePositionBias
-from core_ml.models.positional.rope import RotaryEmbedding
+from models.positional.alibi import AlibiBias
+from models.positional.relative import RelativePositionBias
+from models.positional.rope import RotaryEmbedding
 
 
 class SlidingWindowAttention(nn.Module):

@@ -20,7 +20,7 @@ from types import SimpleNamespace
 
 import torch
 
-from core_ml.models.model import TransformerLM
+from models.model import TransformerLM
 
 
 def make_cfg(

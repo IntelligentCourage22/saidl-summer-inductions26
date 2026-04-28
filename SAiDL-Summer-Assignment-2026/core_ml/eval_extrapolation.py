@@ -21,8 +21,8 @@ from types import SimpleNamespace
 import torch
 import yaml
 
-from core_ml.data.dataset import get_dataloaders
-from core_ml.models.model import TransformerLM
+from data.dataset import get_dataloaders
+from models.model import TransformerLM
 
 
 def to_namespace(value):

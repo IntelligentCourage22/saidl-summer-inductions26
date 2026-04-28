@@ -10,19 +10,19 @@ model:
   max_seq_len: 1024
   window_size: 256
   conv_kernel_size: 5
-  attention_type: "standard"      # standard | sliding_window | linear | mqa | gqa
+  attention_type: "sliding_window"  # standard | sliding_window | linear | mqa | gqa
   positional_encoding: "sinusoidal"  # sinusoidal | rope | alibi | relative | none
   block_type: "standard"          # swap: standard | conv_before | interleaved | gated_conv
 
 training:
-  batch_size: 8
+  batch_size: 4
   learning_rate: 3e-4
-  num_epochs: 10
-  warmup_steps: 1000
+  num_epochs: 15
+  warmup_steps: 200
   grad_clip: 1.0
   seq_len: 1024
   eval_every: 500
-  eval_batches: null    # set to 50 for fast iteration, null for final reported numbers
+  eval_batches: null
   save_every: 1000
   max_steps: null
   seed: 42
@@ -38,4 +38,4 @@ data:
 wandb:
   enabled: true
   project: "SAiDL-LongContext"
-  entity: ansh0   #wandb username here
+  entity: ansh0-bits-pilani

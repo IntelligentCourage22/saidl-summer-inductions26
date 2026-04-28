@@ -2,11 +2,11 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from core_ml.models.attention.gqa import GroupedQueryAttention
-from core_ml.models.attention.linear_attention import LinearAttention
-from core_ml.models.attention.sliding_window import SlidingWindowAttention
-from core_ml.models.attention.standard import StandardAttention
-from core_ml.models.positional.sinusoidal import SinusoidalPE
+from models.attention.gqa import GroupedQueryAttention
+from models.attention.linear_attention import LinearAttention
+from models.attention.sliding_window import SlidingWindowAttention
+from models.attention.standard import StandardAttention
+from models.positional.sinusoidal import SinusoidalPE
 
 
 def cfg_get(cfg, key, default=None):

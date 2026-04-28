@@ -3,7 +3,7 @@ from types import SimpleNamespace
 import pytest
 import torch
 
-from core_ml.models.model import TransformerLM
+from models.model import TransformerLM
 
 
 def make_cfg(attention_type="standard", positional_encoding="sinusoidal", block_type="standard"):
@@ -92,7 +92,7 @@ def test_causal_masking():
 # ---------------------------------------------------------------------------
 
 def test_rope_norm_preservation():
-    from core_ml.models.positional.rope import RotaryEmbedding
+    from models.positional.rope import RotaryEmbedding
 
     rope = RotaryEmbedding(dim=8, max_seq_len=16)
     q = torch.randn(1, 1, 4, 8)

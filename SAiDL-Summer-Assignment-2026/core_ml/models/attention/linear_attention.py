@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from core_ml.models.positional.rope import RotaryEmbedding
+from models.positional.rope import RotaryEmbedding
 
 
 class LinearAttention(nn.Module):

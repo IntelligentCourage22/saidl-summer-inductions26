@@ -1,3 +1,7 @@
+import sys
+import os
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
 import argparse
 import json
 import math
@@ -9,9 +13,9 @@ from types import SimpleNamespace
 import torch
 import yaml
 
-from core_ml.data.dataset import get_dataloaders
-from core_ml.models.model import TransformerLM
-from core_ml.utils.metrics import MetricsTracker, compute_grad_norm
+from data.dataset import get_dataloaders
+from models.model import TransformerLM
+from utils.metrics import MetricsTracker, compute_grad_norm
 
 
 def to_namespace(value):
@@ -32,7 +36,7 @@ def set_nested(config, dotted_key, value):
 
 def parse_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--config", default="core_ml/configs/config.yaml")
+    parser.add_argument("--config", default=os.path.join(os.path.dirname(os.path.abspath(__file__)), "configs", "config.yaml"))
     parser.add_argument(
         "--set",
         action="append",
@@ -73,6 +77,7 @@ def evaluate(model, loader, device, max_batches=None):
         x = x.to(device, non_blocking=True)
         y = y.to(device, non_blocking=True)
         _, loss = model(x, y)
+        if loss.dim() > 0: loss = loss.mean()
         tracker.update(loss.item(), x.numel())
 
     return tracker.get_summary()
@@ -100,7 +105,7 @@ def maybe_init_wandb(config):
 
     return wandb.init(
         project=config["wandb"]["project"],
-        entity=config["wandb"].get("entity"),
+        entity=config["wandb"].get("entity", "ansh0-bits-pilani"),
         config=config,
     )
 
@@ -139,11 +144,14 @@ def main():
     )
 
     model = TransformerLM(cfg).to(device)
+    if torch.cuda.device_count() > 1:
+        print(f"Using {torch.cuda.device_count()} GPUs")
+        model = torch.nn.DataParallel(model)
     optimizer = torch.optim.AdamW(
-        model.parameters(), lr=cfg.training.learning_rate, betas=(0.9, 0.95)
+        model.parameters(), lr=float(cfg.training.learning_rate), betas=(0.9, 0.95)
     )
     total_steps = cfg.training.max_steps or (cfg.training.num_epochs * len(train_loader))
-    scheduler = build_scheduler(optimizer, cfg.training.warmup_steps, total_steps)
+    scheduler = build_scheduler(optimizer, int(cfg.training.warmup_steps), total_steps)
     run = maybe_init_wandb(config)
 
     global_step = 0
@@ -161,6 +169,7 @@ def main():
 
                 optimizer.zero_grad(set_to_none=True)
                 _, loss = model(x, y)
+                if loss.dim() > 0: loss = loss.mean()
                 loss.backward()
                 grad_norm = compute_grad_norm(model)
                 torch.nn.utils.clip_grad_norm_(model.parameters(), cfg.training.grad_clip)
