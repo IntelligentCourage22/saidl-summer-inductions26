@@ -1,7 +1,8 @@
 # SAiDL Summer Assignment 2026
 
 This repository currently focuses on the compulsory Core ML task: modular
-long-context language modeling on WikiText-2.
+long-context language modeling on WikiText-2. It also includes the start of the
+Diffusion domain task: a compute-aware latent DiT baseline plus RACD scaffolding.
 
 ## Current Core ML Status
 
@@ -54,3 +55,81 @@ python -m core_ml.train --set model.block_type=gated_conv
    `gated_conv`.
 5. Copy the final metrics into the LaTeX tables and include short analysis of
    stability, memory, and throughput tradeoffs.
+
+## Diffusion Task
+
+The diffusion code lives in `diffusion/`. It is designed for Kaggle free-tier
+constraints, so the first target is a compact latent DiT rather than a full
+DiT-B/8 training run from scratch.
+
+### Kaggle Setup
+
+```python
+%cd /kaggle/working
+!git clone https://github.com/IntelligentCourage22/saidl-summer-inductions26.git repo
+%cd /kaggle/working/repo/SAiDL-Summer-Assignment-2026
+!pip install -q -r requirements.txt
+```
+
+### Train A Small Latent DiT
+
+Set `data.root` to the Kaggle landscape dataset directory that exists in your
+notebook.
+
+```python
+!python diffusion/train_dit.py \
+  --set data.root="/kaggle/input/landscape-recognition-image-dataset-12k-images" \
+  --set training.max_steps=2000 \
+  --set training.output_dir="results/diffusion/baseline_dit" \
+  --set training.checkpoint_dir="checkpoints/diffusion/baseline_dit"
+```
+
+### Generate Baseline And Global Cyclic Samples
+
+```python
+!python diffusion/sample.py \
+  --checkpoint checkpoints/diffusion/baseline_dit/final.pt \
+  --mode baseline \
+  --set sampling.num_images=64 \
+  --set sampling.output_dir="results/diffusion/samples"
+
+!python diffusion/sample.py \
+  --checkpoint checkpoints/diffusion/baseline_dit/final.pt \
+  --mode global_cyclic \
+  --set sampling.num_images=64 \
+  --set sampling.output_dir="results/diffusion/samples"
+```
+
+### Difficulty Predictor And RACD
+
+```python
+!python diffusion/generate_supervision.py \
+  --checkpoint checkpoints/diffusion/baseline_dit/final.pt \
+  --set predictor.supervision_dir="results/diffusion/difficulty_supervision"
+
+!python diffusion/train_predictor.py \
+  --set predictor.supervision_dir="results/diffusion/difficulty_supervision" \
+  --set predictor.output_dir="results/diffusion/difficulty_predictor"
+
+!python diffusion/sample.py \
+  --checkpoint checkpoints/diffusion/baseline_dit/final.pt \
+  --mode racd \
+  --predictor-checkpoint results/diffusion/difficulty_predictor/difficulty_predictor.pt \
+  --tau 0.5 \
+  --set sampling.num_images=64 \
+  --set sampling.output_dir="results/diffusion/samples"
+```
+
+### Evaluate Generated Folders
+
+```python
+!python diffusion/export_real_images.py \
+  --set data.root="/kaggle/input/landscape-recognition-image-dataset-12k-images" \
+  --output-dir="results/diffusion/real_val" \
+  --max-images=1000
+
+!python diffusion/evaluate.py \
+  --real-dir results/diffusion/real_val \
+  --generated-dir results/diffusion/samples/baseline \
+  --output results/diffusion/eval_baseline.json
+```

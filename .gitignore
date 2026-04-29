@@ -12,6 +12,8 @@ __pycache__/
 wandb/
 outputs/
 checkpoints/
+*.pt
+*.safetensors
 *.ipynb
 *.aux
 *.log

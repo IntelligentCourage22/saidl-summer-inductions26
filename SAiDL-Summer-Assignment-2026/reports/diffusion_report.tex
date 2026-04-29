@@ -1,0 +1,89 @@
+\documentclass{article}
+\usepackage[margin=1in]{geometry}
+\usepackage{booktabs}
+\usepackage{graphicx}
+\usepackage{hyperref}
+\usepackage{amsmath}
+
+\title{Diffusion: Regionally-Adaptive Cyclic Diffusion}
+\author{Ansh}
+\date{SAiDL Summer Assignment 2026}
+
+\begin{document}
+\maketitle
+
+\section{Overview}
+
+This report studies Regionally-Adaptive Cyclic Diffusion (RACD) for landscape
+image generation. The assignment specifies a landscape dataset but does not
+provide one directly, so the experiments use a public Kaggle landscape image
+dataset resized to $256 \times 256$. The implementation uses latent diffusion:
+images are encoded with a frozen pretrained VAE, and a compact DiT-style
+Transformer is trained to predict diffusion noise in latent space.
+
+\section{Method}
+
+\subsection{Baseline Latent DiT}
+
+The baseline model is a compute-aware latent DiT trained on frozen VAE latents.
+To fit Kaggle free-tier constraints, the initial model uses a smaller
+configuration than DiT-B/8: hidden size 384, 6 layers, 6 attention heads, and
+patch size 4 in the $32 \times 32$ latent grid. This gives 64 latent tokens per
+image, which preserves more spatial structure for later region-adaptive
+refinement.
+
+\subsection{Global Cyclic Refinement}
+
+After baseline sampling reaches $z_0$, global cyclic refinement re-injects noise
+up to timestep $t=200$ and denoises back to $t=0$. This applies extra compute to
+the entire latent and serves as the main non-adaptive refinement baseline.
+
+\subsection{Difficulty Predictor}
+
+The difficulty predictor is trained after the DiT is frozen. For each training
+image, a noisy latent $z_t$ is generated at an intermediate timestep. The frozen
+DiT predicts the noise, which is converted into an intermediate $\hat{z}_0$
+estimate. The per-location squared error between $\hat{z}_0$ and the clean VAE
+latent becomes the difficulty supervision target. A small CNN maps intermediate
+DiT token features to a $32 \times 32$ difficulty map.
+
+\subsection{RACD}
+
+At sampling time, the difficulty predictor estimates which latent regions should
+receive refinement. A threshold $\tau$ converts the difficulty map into a binary
+mask. Noise is re-injected only in masked regions, then the model denoises from
+$t=200$ back to $t=0$. The final latent combines refined masked regions with
+unmasked baseline regions.
+
+\section{Experiments}
+
+\begin{table}[h]
+\centering
+\begin{tabular}{lrrrr}
+\toprule
+Method & FID $\downarrow$ & CMMD $\downarrow$ & Time (s/img) & Refinement Fraction \\
+\midrule
+Baseline DiT & -- & -- & -- & 0.00 \\
+Global Cyclic & -- & -- & -- & 1.00 \\
+RACD $\tau=0.3$ & -- & -- & -- & -- \\
+RACD $\tau=0.5$ & -- & -- & -- & -- \\
+RACD $\tau=0.7$ & -- & -- & -- & -- \\
+\bottomrule
+\end{tabular}
+\caption{Diffusion evaluation table to be filled after Kaggle sampling runs.}
+\end{table}
+
+\section{Analysis}
+
+The primary quantities of interest are whether global cyclic refinement improves
+sample quality at a clear compute cost, and whether RACD can recover most of the
+quality gain while refining only a fraction of latent regions. The final report
+will compare FID, CMMD, generation time, and visual grids for baseline, global
+cyclic, and RACD threshold sweeps.
+
+\section{Conclusion}
+
+This section will be completed after the baseline DiT, global cyclic refinement,
+and RACD experiments finish.
+
+\end{document}

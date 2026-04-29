@@ -1,0 +1,67 @@
+seed: 42
+device: cuda
+
+data:
+  root: "/kaggle/input/landscape-recognition-image-dataset-12k-images"
+  image_size: 256
+  val_fraction: 0.1
+  max_train_images: 5000
+  max_val_images: 1000
+  num_workers: 2
+
+vae:
+  model_name: "stabilityai/sd-vae-ft-ema"
+  scaling_factor: 0.18215
+
+model:
+  in_channels: 4
+  latent_size: 32
+  patch_size: 4
+  hidden_size: 384
+  depth: 6
+  num_heads: 6
+  mlp_ratio: 4.0
+  feature_layer: 3
+
+diffusion:
+  num_timesteps: 1000
+  beta_start: 0.0001
+  beta_end: 0.02
+  prediction_target: epsilon
+
+training:
+  batch_size: 8
+  grad_accum_steps: 2
+  learning_rate: 1.0e-4
+  weight_decay: 0.0
+  ema_decay: 0.9999
+  grad_clip: 1.0
+  num_epochs: 20
+  max_steps: 20000
+  log_every: 100
+  save_every: 1000
+  amp: true
+  output_dir: "results/diffusion/baseline_dit"
+  checkpoint_dir: "checkpoints/diffusion/baseline_dit"
+  resume: null
+
+sampling:
+  num_images: 64
+  batch_size: 8
+  ddim_steps: 50
+  cyclic_t_start: 200
+  output_dir: "results/diffusion/samples"
+
+predictor:
+  t_mid: 500
+  batch_size: 16
+  learning_rate: 1.0e-4
+  num_epochs: 10
+  max_steps: 5000
+  supervision_dir: "results/diffusion/difficulty_supervision"
+  output_dir: "results/diffusion/difficulty_predictor"
+
+wandb:
+  enabled: true
+  project: "SAiDL-Diffusion-RACD"
+  entity: "ansh0-bits-pilani"

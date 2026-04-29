@@ -5,3 +5,9 @@ PyYAML
 tqdm
 wandb
 pytest
+torchvision
+diffusers
+accelerate
+Pillow
+clean-fid
+scipy
