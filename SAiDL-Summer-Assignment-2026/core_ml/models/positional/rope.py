@@ -23,10 +23,10 @@ class RotaryEmbedding(nn.Module):
         seq_len = q.size(-2)
         cos = self.cos[:, :, :seq_len, :].to(dtype=q.dtype, device=q.device)
         sin = self.sin[:, :, :seq_len, :].to(dtype=q.dtype, device=q.device)
-        return self._apply(q, cos, sin), self._apply(k, cos, sin)
+        return self.apply_rotary(q, cos, sin), self.apply_rotary(k, cos, sin)
 
     @staticmethod
-    def _apply(x, cos, sin):
+    def apply_rotary(x, cos, sin):
         x_even = x[..., 0::2]
         x_odd = x[..., 1::2]
         out = torch.empty_like(x)
