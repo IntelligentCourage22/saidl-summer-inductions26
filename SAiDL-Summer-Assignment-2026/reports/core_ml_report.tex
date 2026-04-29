@@ -33,6 +33,9 @@ a feed-forward dimension of 2048.
     \item Dataset: WikiText-2 raw.
     \item Tokenizer: GPT-2 tokenizer.
     \item Optimizer: AdamW.
+    \item Model width/depth: 512 hidden dimension, 8 attention heads, 6 Transformer layers, and feed-forward dimension 2048.
+    \item Sequence length: 1024 tokens for the initial baseline and attention-variant experiments.
+    \item Batch size: 4.
     \item Logged metrics: training loss, validation loss, validation perplexity,
     peak GPU memory, throughput, and elapsed time.
 \end{itemize}
@@ -41,13 +44,19 @@ a feed-forward dimension of 2048.
 \centering
 \begin{tabular}{lrrrrr}
 \toprule
-Model & Context & Val Loss & Val PPL & Tokens/sec & Peak Memory MB \\
+Model & Context & Val Loss & Val PPL & Val Tokens/sec & Train Peak Mem (MB) \\
 \midrule
-Standard + Sinusoidal & 1024 & -- & -- & -- & -- \\
+Standard + Sinusoidal & 1024 & 5.862 & 351.41 & 29636.66 & 4182.75 \\
 \bottomrule
 \end{tabular}
 \caption{Baseline results.}
 \end{table}
+
+The standard Transformer with sinusoidal positional encoding serves as the
+reference point for all later comparisons. At step 8500 it reaches a validation
+loss of 5.862 and validation perplexity of 351.41 while maintaining high
+throughput and moderate memory use. This baseline is strong enough to act as a
+meaningful control but still leaves ample room for architectural improvement.
 
 \section{Attention Variants}
 
@@ -57,18 +66,27 @@ grouped-query attention.
 
 \begin{table}[h]
 \centering
-\begin{tabular}{llrrrr}
+\begin{tabular}{lrrrrrr}
 \toprule
-Attention & Context & Val PPL & Tokens/sec & Peak Memory MB & Notes \\
+Attention & Context & Step & Val Loss & Val PPL & Val Tokens/sec & Train Peak Mem (MB) \\
 \midrule
-Standard & 512 & -- & -- & -- & -- \\
-Sliding Window & 512 & -- & -- & -- & -- \\
-Linear & 512 & -- & -- & -- & -- \\
-GQA & 512 & -- & -- & -- & -- \\
+Standard & 1024 & 8500 & 5.862 & 351.41 & 29636.66 & 4182.75 \\
+Sliding Window & 1024 & 5500 & 6.052 & 424.96 & 28301.10 & 4188.65 \\
+Linear & 1024 & 8500 & 5.856 & 349.49 & 23573.86 & 4981.47 \\
+GQA & 1024 & 8500 & 5.810 & 333.78 & 29830.34 & 4155.67 \\
 \bottomrule
 \end{tabular}
 \caption{Attention ablation results.}
 \end{table}
+
+Among the attention variants evaluated so far, grouped-query attention (GQA)
+performs best. It achieves the lowest validation loss and validation perplexity
+while also remaining efficient in both throughput and memory. Linear attention
+slightly improves over the standard baseline in validation perplexity, but this
+comes with noticeably higher memory consumption and lower throughput. The
+sliding-window model performs worst in the current results, although that run
+was logged at a smaller training budget than the others and should therefore be
+treated as a preliminary comparison rather than a final conclusion.
 
 \section{Positional Encodings}
 
@@ -79,18 +97,30 @@ $L_{\mathrm{test}}\in\{512,1024,2048\}$.
 
 \begin{table}[h]
 \centering
-\begin{tabular}{lrrrr}
+\begin{tabular}{lrrrrr}
 \toprule
-Position Method & Train Context & Test Context & Val PPL & Notes \\
+Position Method & Attention & Context & Step & Val PPL & Notes \\
 \midrule
-Sinusoidal & 512 & 512 & -- & -- \\
-RoPE & 512 & 1024 & -- & -- \\
-ALiBi & 512 & 2048 & -- & -- \\
-Relative Bias & 512 & 2048 & -- & -- \\
+Sinusoidal & GQA & 1024 & 8500 & 333.78 & Fully completed run \\
+RoPE & GQA & 1024 & 6500 & 150.28 & Best logged validation checkpoint \\
+RoPE (final) & GQA & 1024 & 8500 & 152.73 & Completed rerun, slight late-stage degradation \\
+ALiBi & -- & -- & -- & -- & Pending \\
+Relative Bias & -- & -- & -- & -- & Pending \\
 \bottomrule
 \end{tabular}
-\caption{Positional extrapolation results.}
+\caption{Current positional encoding results.}
 \end{table}
+
+RoPE is the strongest positional encoding tested so far in the current setup.
+The completed GQA + RoPE rerun achieved its best logged validation performance
+at step 6500, reaching validation loss 5.012 and validation perplexity 150.28.
+After this point the validation curve drifted upward slightly, and the final
+checkpoint at step 8500 ended at validation loss 5.029 and validation
+perplexity 152.73. Even this final checkpoint remains dramatically better than
+the GQA + sinusoidal baseline, confirming that RoPE provides a substantial
+improvement for long-context language modeling in this model family. ALiBi and
+relative positional bias are implemented but had not yet been fully evaluated at
+the time of writing.
 
 \section{Convolution-Attention Hybrids}
 
@@ -104,23 +134,64 @@ with the best attention and positional encoding from the earlier ablations.
 \toprule
 Block Type & Val PPL & Tokens/sec & Peak Memory MB & Notes \\
 \midrule
-Standard & -- & -- & -- & -- \\
-Conv Before Attention & -- & -- & -- & -- \\
-Gated Conv FFN & -- & -- & -- & -- \\
+Standard & 152.73 (RoPE run) & 31379.15 & 4155.07 & Best current non-hybrid model \\
+Conv Before Attention & -- & -- & -- & Pending \\
+Gated Conv FFN & -- & -- & -- & Pending \\
 \bottomrule
 \end{tabular}
 \caption{Hybrid architecture results.}
 \end{table}
 
+At the current stage of the project, the convolution-augmented variants are
+implemented in code but have not yet been benchmarked thoroughly. The strongest
+non-hybrid configuration so far is GQA with RoPE and a standard Transformer
+block, which provides the natural starting point for the hybrid experiments.
+
 \section{Analysis}
 
-Discuss which variants improve perplexity, which improve efficiency, and which
-are unstable. Include observations about memory scaling across context lengths
-and whether positional methods extrapolate beyond the training context.
+The first major conclusion from the experiments is that not all efficient
+attention variants are equally useful in this setting. Sliding-window attention
+did not improve either quality or efficiency enough to justify its use at the
+tested budget. Linear attention improved validation perplexity slightly over the
+standard baseline but required substantially more training memory and reduced
+throughput, which weakens its appeal as a practical replacement.
+
+GQA, in contrast, improved both language modeling quality and efficiency. It
+reduced validation perplexity from 351.41 to 333.78 while slightly lowering peak
+training memory and maintaining very similar throughput. This makes GQA the most
+attractive attention choice among the tested variants.
+
+The positional encoding experiments point even more strongly toward the
+importance of architecture choices for long-context behavior. RoPE produced a
+very large improvement when paired with GQA, reducing validation perplexity from
+333.78 for GQA + sinusoidal to a best logged value of 150.28. The validation
+curve indicates that the model performs best around step 6500 and then degrades
+slightly afterward, suggesting mild late-stage overfitting rather than
+instability. This is still a clear win for RoPE and makes it the strongest
+positional encoding result in the project so far.
+
+Overall, the experiments suggest a useful hierarchy: GQA is the best attention
+mechanism tested so far, and RoPE is the most promising positional encoding.
+This already gives a strong candidate model for the next stages of the project
+and for later hybrid convolution experiments.
 
 \section{Conclusion}
 
-Summarize the best model, the most compute-efficient model, and the main lessons
-from the ablation study.
+The baseline standard Transformer with sinusoidal positional encoding establishes
+a reasonable starting point, but it is clearly not the strongest model in the
+current study. GQA emerges as the best attention variant, outperforming
+standard, sliding-window, and linear attention on validation perplexity while
+remaining efficient in both memory and throughput. RoPE further improves results
+substantially when combined with GQA, making GQA + RoPE the strongest model
+observed so far. The best logged RoPE checkpoint occurs at step 6500, where the
+model reaches validation perplexity 150.28, while the final completed run at
+step 8500 remains close at 152.73.
+
+The main lesson from the ablation study is that long-context modeling quality in
+this setup depends strongly on choosing the right attention and positional
+components rather than only scaling the baseline Transformer. Future work in the
+same codebase should complete the remaining positional and convolution-hybrid
+ablations, then carry the best-performing configuration forward as the final Core
+ML submission model.
 
 \end{document}
