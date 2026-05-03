@@ -134,8 +134,7 @@ Global Cyclic & 349.11 & 0.0022110 & 0.1563 & 1.00 \\
 RACD $\tau=0.2$ & 349.10 & 0.0022111 & 0.1564 & 0.573 \\
 \bottomrule
 \end{tabular}
-\caption{Main comparison. Fill this table from
-\texttt{results/diffusion/tau\_sweep/tau\_sweep\_results.csv}.}
+\caption{Main comparison from the 256-image sweep.}
 \end{table}
 
 \begin{table}[h]
@@ -174,19 +173,30 @@ $\tau$ & CMMD $\downarrow$ & Time (s/img) & Refined Fraction \\
   \end{figure}
 }{}
 
-\section{Analysis To Complete After Runs}
+\section{Analysis}
 
-The final analysis should answer four questions directly:
-\begin{enumerate}
-  \item Does global cyclic refinement improve FID/CMMD or visual detail compared
-  with baseline sampling, and how much generation time does it add?
-  \item Which $\tau$ gives the best RACD fidelity/compute trade-off, and is it
-  on the Pareto frontier of the sweep?
-  \item Does RACD recover most of the global cyclic quality gain while refining
-  a smaller fraction of the latent grid?
-  \item Where does RACD fail visually? Boundary artifacts, texture washout, and
-  over-refinement should be inspected in generated image grids.
-\end{enumerate}
+The baseline DiT produced the best FID in this run, while global cyclic
+refinement produced the best CMMD. The global cyclic pass increased generation
+time from 0.1333 s/image to 0.1563 s/image, an approximately 17.2\% overhead.
+This suggests that the extra denoising pass changes CLIP-space semantics very
+slightly in the desired direction, but the effect is not strong enough to
+improve the Inception-space FID estimate on this checkpoint.
+
+Among RACD thresholds, $\tau=0.2$ is the best fidelity/compute choice: it ties
+the best RACD CMMD value, has nearly the lowest RACD runtime, and refines only
+57.3\% of latent locations instead of the full grid. Lowering the threshold to
+0.1 refines 81.7\% of locations but does not improve CMMD, while raising the
+threshold above 0.3 quickly reduces compute without improving the semantic
+metric. Thus the observed Pareto region is around $\tau \in \{0.2, 0.3\}$.
+
+RACD did not clearly outperform the baseline in this experiment. The main
+positive result is narrower: RACD at $\tau=0.2$ nearly matches global cyclic
+CMMD while applying refinement to a smaller spatial fraction. The negative
+result is also informative. The DiT checkpoint was trained for 4860 optimizer
+steps on 3888 training images, so the denoiser and difficulty predictor are
+likely undertrained relative to a full diffusion training run. The extremely
+small CMMD differences also indicate that this sweep should be interpreted as
+a pipeline validation and trade-off study rather than a definitive quality win.
 
 \section{Conclusion}
 
