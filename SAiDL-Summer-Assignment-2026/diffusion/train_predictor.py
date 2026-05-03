@@ -6,7 +6,7 @@ from pathlib import Path
 
 import torch
 import torch.nn.functional as F
-from torch.utils.data import DataLoader, Dataset
+from torch.utils.data import DataLoader, Dataset, random_split
 from tqdm import tqdm
 
 sys_path = os.path.dirname(os.path.abspath(__file__))
@@ -39,9 +39,24 @@ def collate_batches(records):
 
 def parse_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--config", default=os.path.join(sys_path, "configs", "dit_landscape.yaml"))
+    parser.add_argument(
+        "--config", default=os.path.join(sys_path, "configs", "dit_landscape.yaml")
+    )
     parser.add_argument("--set", action="append", default=[])
     return parser.parse_args()
+
+
+@torch.no_grad()
+def evaluate(predictor, loader, device):
+    predictor.eval()
+    losses = []
+    for features, targets in loader:
+        features = features.to(device)
+        targets = targets.to(device)
+        pred = predictor(features)
+        losses.append(float(F.mse_loss(pred, targets).detach().cpu()))
+    predictor.train()
+    return sum(losses) / len(losses) if losses else None
 
 
 def main():
@@ -52,10 +67,22 @@ def main():
     output_dir = ensure_dir(cfg.predictor.output_dir)
 
     dataset = SupervisionDataset(cfg.predictor.supervision_dir)
-    loader = DataLoader(dataset, batch_size=1, shuffle=True, collate_fn=collate_batches)
+    val_len = int(len(dataset) * float(getattr(cfg.predictor, "val_fraction", 0.1)))
+    val_len = min(max(val_len, 1), max(len(dataset) - 1, 0))
+    train_len = len(dataset) - val_len
+    generator = torch.Generator().manual_seed(cfg.seed)
+    train_ds, val_ds = random_split(dataset, [train_len, val_len], generator=generator)
+    loader = DataLoader(train_ds, batch_size=1, shuffle=True, collate_fn=collate_batches)
+    val_loader = DataLoader(val_ds, batch_size=1, shuffle=False, collate_fn=collate_batches)
     token_grid = cfg.model.latent_size // cfg.model.patch_size
-    predictor = DifficultyPredictor(cfg.model.hidden_size, token_grid, cfg.model.latent_size).to(device)
-    optimizer = torch.optim.AdamW(predictor.parameters(), lr=float(cfg.predictor.learning_rate))
+    predictor = DifficultyPredictor(
+        cfg.model.hidden_size, token_grid, cfg.model.latent_size
+    ).to(device)
+    optimizer = torch.optim.AdamW(
+        predictor.parameters(),
+        lr=float(cfg.predictor.learning_rate),
+        weight_decay=float(getattr(cfg.predictor, "weight_decay", 0.0)),
+    )
     run = maybe_init_wandb(config)
 
     step = 0
@@ -84,6 +111,20 @@ def main():
                 if run is not None:
                     run.log(record, step=step)
 
+            val_every = getattr(cfg.predictor, "val_every", 100)
+            if val_every and step % val_every == 0:
+                val_loss = evaluate(predictor, val_loader, device)
+                if val_loss is not None:
+                    record = {
+                        "step": step,
+                        "epoch": epoch,
+                        "predictor_val_loss": val_loss,
+                        "elapsed_sec": time.time() - start,
+                    }
+                    append_jsonl(output_dir / "metrics.jsonl", record)
+                    if run is not None:
+                        run.log(record, step=step)
+
             if cfg.predictor.max_steps and step >= cfg.predictor.max_steps:
                 break
         if cfg.predictor.max_steps and step >= cfg.predictor.max_steps:
@@ -96,7 +137,15 @@ def main():
     }
     torch.save(checkpoint, output_dir / "difficulty_predictor.pt")
     with open(output_dir / "final_metrics.json", "w", encoding="utf-8") as handle:
-        json.dump({"step": step}, handle, indent=2)
+        json.dump(
+            {
+                "step": step,
+                "num_train_supervision_batches": len(train_ds),
+                "num_val_supervision_batches": len(val_ds),
+            },
+            handle,
+            indent=2,
+        )
     if run is not None:
         run.finish()
 

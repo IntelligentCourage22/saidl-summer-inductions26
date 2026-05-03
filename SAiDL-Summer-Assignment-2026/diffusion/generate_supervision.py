@@ -72,6 +72,7 @@ def main():
         cfg.diffusion.beta_start,
         cfg.diffusion.beta_end,
         device,
+        getattr(cfg.diffusion, "prediction_target", "epsilon"),
     )
 
     t_mid = int(cfg.predictor.t_mid)
@@ -90,6 +91,7 @@ def main():
         record = {
             "features": features.detach().cpu().half(),
             "target": target.detach().cpu().half(),
+            "timestep": t_mid,
         }
         torch.save(record, Path(out_dir) / f"batch_{sample_idx:05d}.pt")
         sample_idx += 1

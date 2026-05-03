@@ -11,3 +11,4 @@ accelerate
 Pillow
 clean-fid
 scipy
+matplotlib

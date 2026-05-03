@@ -16,12 +16,12 @@ vae:
 model:
   in_channels: 4
   latent_size: 32
-  patch_size: 8
-  hidden_size: 768
-  depth: 12
-  num_heads: 12
+  patch_size: 4
+  hidden_size: 384
+  depth: 6
+  num_heads: 6
   mlp_ratio: 4.0
-  feature_layer: 6
+  feature_layer: 3
 
 diffusion:
   num_timesteps: 1000
@@ -45,8 +45,8 @@ training:
   max_val_batches: 16
   save_every: 1000
   amp: true
-  output_dir: "results/diffusion/baseline_dit"
-  checkpoint_dir: "checkpoints/diffusion/baseline_dit"
+  output_dir: "results/diffusion/baseline_dit_compact"
+  checkpoint_dir: "checkpoints/diffusion/baseline_dit_compact"
   resume: null
 
 sampling:
@@ -65,8 +65,8 @@ predictor:
   max_steps: 5000
   val_fraction: 0.1
   val_every: 100
-  supervision_dir: "results/diffusion/difficulty_supervision"
-  output_dir: "results/diffusion/difficulty_predictor"
+  supervision_dir: "results/diffusion/difficulty_supervision_compact"
+  output_dir: "results/diffusion/difficulty_predictor_compact"
 
 wandb:
   enabled: true

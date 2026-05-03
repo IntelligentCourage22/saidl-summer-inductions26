@@ -49,12 +49,38 @@ def split_image_paths(
 class LandscapeDataset(Dataset):
     def __init__(self, image_paths, image_size=256, train=True):
         self.image_paths = list(image_paths)
-        transform_steps = [
-            transforms.Resize(image_size, interpolation=transforms.InterpolationMode.BICUBIC),
-            transforms.CenterCrop(image_size),
-        ]
         if train:
-            transform_steps.append(transforms.RandomHorizontalFlip())
+            transform_steps = [
+                transforms.RandomResizedCrop(
+                    image_size,
+                    scale=(0.85, 1.0),
+                    ratio=(0.9, 1.1),
+                    interpolation=transforms.InterpolationMode.BICUBIC,
+                ),
+                transforms.RandomHorizontalFlip(),
+                transforms.RandomApply(
+                    [
+                        transforms.ColorJitter(
+                            brightness=0.1,
+                            contrast=0.1,
+                            saturation=0.1,
+                            hue=0.02,
+                        )
+                    ],
+                    p=0.5,
+                ),
+                transforms.RandomRotation(
+                    degrees=5,
+                    interpolation=transforms.InterpolationMode.BICUBIC,
+                ),
+            ]
+        else:
+            transform_steps = [
+                transforms.Resize(
+                    image_size, interpolation=transforms.InterpolationMode.BICUBIC
+                ),
+                transforms.CenterCrop(image_size),
+            ]
         transform_steps.extend(
             [
                 transforms.ToTensor(),

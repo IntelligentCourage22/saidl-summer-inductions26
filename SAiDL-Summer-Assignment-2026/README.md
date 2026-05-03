@@ -59,8 +59,11 @@ python -m core_ml.train --set model.block_type=gated_conv
 ## Diffusion Task
 
 The diffusion code lives in `diffusion/`. It is designed for Kaggle free-tier
-constraints, so the first target is a compact latent DiT rather than a full
-DiT-B/8 training run from scratch.
+experiments, but the default config now follows the assignment baseline:
+DiT-B/8 on `32x32` VAE latents (`hidden_size=768`, `depth=12`,
+`num_heads=12`, `patch_size=8`). A smaller debug config is available at
+`diffusion/configs/dit_landscape_compact.yaml` for smoke tests only; report
+numbers should use the default DiT-B/8 config.
 
 ### Kaggle Setup
 
@@ -71,17 +74,25 @@ DiT-B/8 training run from scratch.
 !pip install -q -r requirements.txt
 ```
 
-### Train A Small Latent DiT
+### Train The Baseline Latent DiT
 
 Set `data.root` to the Kaggle landscape dataset directory that exists in your
-notebook.
+notebook. For the SAiDL diffusion task, attach the Kaggle dataset
+`arnaud58/landscape-pictures`; Kaggle usually mounts it at
+`/kaggle/input/landscape-pictures`.
 
 ```python
 !python diffusion/train_dit.py \
-  --set data.root="/kaggle/input/landscape-recognition-image-dataset-12k-images" \
+  --set data.root="/kaggle/input/landscape-pictures" \
   --set training.max_steps=2000 \
   --set training.output_dir="results/diffusion/baseline_dit" \
   --set training.checkpoint_dir="checkpoints/diffusion/baseline_dit"
+```
+
+For a fast code-path smoke test, add:
+
+```python
+--config diffusion/configs/dit_landscape_compact.yaml
 ```
 
 ### Generate Baseline And Global Cyclic Samples
@@ -124,7 +135,7 @@ notebook.
 
 ```python
 !python diffusion/export_real_images.py \
-  --set data.root="/kaggle/input/landscape-recognition-image-dataset-12k-images" \
+  --set data.root="/kaggle/input/landscape-pictures" \
   --output-dir="results/diffusion/real_val" \
   --max-images=1000
 
@@ -132,4 +143,29 @@ notebook.
   --real-dir results/diffusion/real_val \
   --generated-dir results/diffusion/samples/baseline \
   --output results/diffusion/eval_baseline.json
+```
+
+### Required Tau Sweep
+
+This runs baseline, global cyclic refinement, and RACD for each threshold,
+then writes `tau_sweep_results.json`, `tau_sweep_results.csv`, and the required
+`cmmd_vs_time.png` plot.
+
+```python
+!python diffusion/run_tau_sweep.py \
+  --checkpoint checkpoints/diffusion/baseline_dit/final.pt \
+  --predictor-checkpoint results/diffusion/difficulty_predictor/difficulty_predictor.pt \
+  --real-dir results/diffusion/real_val \
+  --output-dir results/diffusion/tau_sweep \
+  --num-images 256 \
+  --taus 0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9
+```
+
+Create the image grid for the LaTeX report:
+
+```python
+!python diffusion/make_sample_grid.py \
+  --folders results/diffusion/tau_sweep/samples/baseline results/diffusion/tau_sweep/samples/global_cyclic results/diffusion/tau_sweep/samples/racd_tau_0p5/racd \
+  --labels Baseline Global-Cyclic RACD \
+  --output results/diffusion/sample_grid.png
 ```

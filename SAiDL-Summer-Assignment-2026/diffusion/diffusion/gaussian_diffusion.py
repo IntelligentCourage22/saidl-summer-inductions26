@@ -8,18 +8,37 @@ def extract(values, timesteps, shape):
 
 
 class GaussianDiffusion:
-    def __init__(self, num_timesteps=1000, beta_start=0.0001, beta_end=0.02, device="cpu"):
+    def __init__(
+        self,
+        num_timesteps=1000,
+        beta_start=0.0001,
+        beta_end=0.02,
+        device="cpu",
+        prediction_target="epsilon",
+    ):
+        if prediction_target != "epsilon":
+            raise ValueError(f"Unsupported prediction target: {prediction_target!r}")
         self.num_timesteps = num_timesteps
         self.device = torch.device(device)
-        self.betas = torch.linspace(beta_start, beta_end, num_timesteps, device=self.device)
+        self.prediction_target = prediction_target
+        self.betas = torch.linspace(
+            beta_start, beta_end, num_timesteps, device=self.device
+        )
         self.alphas = 1.0 - self.betas
         self.alphas_cumprod = torch.cumprod(self.alphas, dim=0)
         self.sqrt_alphas_cumprod = torch.sqrt(self.alphas_cumprod)
         self.sqrt_one_minus_alphas_cumprod = torch.sqrt(1.0 - self.alphas_cumprod)
         self.sqrt_recip_alphas = torch.sqrt(1.0 / self.alphas)
-        self.posterior_variance = self.betas * (
-            1.0 - torch.cat([torch.ones(1, device=self.device), self.alphas_cumprod[:-1]])
-        ) / (1.0 - self.alphas_cumprod)
+        self.posterior_variance = (
+            self.betas
+            * (
+                1.0
+                - torch.cat(
+                    [torch.ones(1, device=self.device), self.alphas_cumprod[:-1]]
+                )
+            )
+            / (1.0 - self.alphas_cumprod)
+        )
 
     def to(self, device):
         return GaussianDiffusion(
@@ -27,6 +46,7 @@ class GaussianDiffusion:
             float(self.betas[0].detach().cpu()),
             float(self.betas[-1].detach().cpu()),
             device,
+            self.prediction_target,
         )
 
     def q_sample(self, x_start, timesteps, noise=None):
@@ -34,12 +54,14 @@ class GaussianDiffusion:
             noise = torch.randn_like(x_start)
         return (
             extract(self.sqrt_alphas_cumprod, timesteps, x_start.shape) * x_start
-            + extract(self.sqrt_one_minus_alphas_cumprod, timesteps, x_start.shape) * noise
+            + extract(self.sqrt_one_minus_alphas_cumprod, timesteps, x_start.shape)
+            * noise
         )
 
     def predict_x0_from_eps(self, x_t, timesteps, eps):
         return (
-            x_t - extract(self.sqrt_one_minus_alphas_cumprod, timesteps, x_t.shape) * eps
+            x_t
+            - extract(self.sqrt_one_minus_alphas_cumprod, timesteps, x_t.shape) * eps
         ) / extract(self.sqrt_alphas_cumprod, timesteps, x_t.shape)
 
     def training_loss(self, model, x_start):
@@ -49,6 +71,8 @@ class GaussianDiffusion:
         noise = torch.randn_like(x_start)
         x_t = self.q_sample(x_start, timesteps, noise)
         pred = model(x_t, timesteps)
+        if self.prediction_target != "epsilon":
+            raise ValueError(f"Unsupported prediction target: {self.prediction_target!r}")
         return F.mse_loss(pred, noise)
 
     @torch.no_grad()
@@ -59,11 +83,15 @@ class GaussianDiffusion:
     @torch.no_grad()
     def p_sample_from_pred_noise(self, pred_noise, x_t, timesteps):
         beta_t = extract(self.betas, timesteps, x_t.shape)
-        sqrt_one_minus = extract(self.sqrt_one_minus_alphas_cumprod, timesteps, x_t.shape)
+        sqrt_one_minus = extract(
+            self.sqrt_one_minus_alphas_cumprod, timesteps, x_t.shape
+        )
         sqrt_recip_alpha = extract(self.sqrt_recip_alphas, timesteps, x_t.shape)
         model_mean = sqrt_recip_alpha * (x_t - beta_t * pred_noise / sqrt_one_minus)
         noise = torch.randn_like(x_t)
-        nonzero_mask = (timesteps != 0).float().reshape(x_t.shape[0], *((1,) * (x_t.dim() - 1)))
+        nonzero_mask = (
+            (timesteps != 0).float().reshape(x_t.shape[0], *((1,) * (x_t.dim() - 1)))
+        )
         variance = extract(self.posterior_variance, timesteps, x_t.shape)
         return model_mean + nonzero_mask * torch.sqrt(variance.clamp(min=1e-20)) * noise
 
@@ -76,14 +104,18 @@ class GaussianDiffusion:
         if prev_timestep < 0:
             alpha_prev = torch.ones_like(alpha_t)
         else:
-            prev = torch.full((bsz,), int(prev_timestep), device=x_t.device, dtype=torch.long)
+            prev = torch.full(
+                (bsz,), int(prev_timestep), device=x_t.device, dtype=torch.long
+            )
             alpha_prev = extract(self.alphas_cumprod, prev, x_t.shape)
         direction = torch.sqrt((1.0 - alpha_prev).clamp(min=0.0)) * pred_noise
         return torch.sqrt(alpha_prev) * x0 + direction
 
     @torch.no_grad()
     def add_noise_to_timestep(self, x_start, t_start, mask=None):
-        timesteps = torch.full((x_start.shape[0],), t_start, device=x_start.device, dtype=torch.long)
+        timesteps = torch.full(
+            (x_start.shape[0],), t_start, device=x_start.device, dtype=torch.long
+        )
         noised = self.q_sample(x_start, timesteps)
         if mask is None:
             return noised

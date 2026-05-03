@@ -41,6 +41,15 @@ def encode_folder(root, batch_size=16, device="cuda", model_name="openai/clip-vi
     for images in loader:
         inputs = processor(images=images, return_tensors="pt", padding=True).to(device)
         feats = model.get_image_features(**inputs)
+        if not torch.is_tensor(feats):
+            if hasattr(feats, "image_embeds") and feats.image_embeds is not None:
+                feats = feats.image_embeds
+            elif hasattr(feats, "pooler_output") and feats.pooler_output is not None:
+                feats = feats.pooler_output
+            elif hasattr(feats, "last_hidden_state"):
+                feats = feats.last_hidden_state[:, 0]
+            else:
+                raise TypeError(f"Unsupported CLIP feature output type: {type(feats)!r}")
         feats = torch.nn.functional.normalize(feats, dim=-1)
         embeddings.append(feats.cpu())
     return torch.cat(embeddings, dim=0)

@@ -27,10 +27,14 @@ from utils import EMAModel, ensure_dir, load_config, set_seed, torch_load
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("--checkpoint", required=True)
-    parser.add_argument("--mode", choices=["baseline", "global_cyclic", "racd"], default="baseline")
+    parser.add_argument(
+        "--mode", choices=["baseline", "global_cyclic", "racd"], default="baseline"
+    )
     parser.add_argument("--predictor-checkpoint", default=None)
     parser.add_argument("--tau", type=float, default=0.5)
-    parser.add_argument("--config", default=os.path.join(sys_path, "configs", "dit_landscape.yaml"))
+    parser.add_argument(
+        "--config", default=os.path.join(sys_path, "configs", "dit_landscape.yaml")
+    )
     parser.add_argument("--set", action="append", default=[])
     return parser.parse_args()
 
@@ -58,14 +62,21 @@ def main():
         cfg.diffusion.beta_start,
         cfg.diffusion.beta_end,
         device,
+        getattr(cfg.diffusion, "prediction_target", "epsilon"),
     )
     predictor = None
     if args.mode == "racd":
         if args.predictor_checkpoint is None:
             raise ValueError("--predictor-checkpoint is required for RACD sampling.")
         pred_ckpt = torch_load(args.predictor_checkpoint, map_location=device)
-        token_grid = cfg.model.latent_size // cfg.model.patch_size
-        predictor = DifficultyPredictor(cfg.model.hidden_size, token_grid, cfg.model.latent_size).to(device)
+        predictor_cfg = pred_ckpt.get("config", {})
+        feature_timestep = predictor_cfg.get("predictor", {}).get(
+            "t_mid", cfg.predictor.t_mid
+        )
+        token_grid = model_cfg["latent_size"] // model_cfg["patch_size"]
+        predictor = DifficultyPredictor(
+            model_cfg["hidden_size"], token_grid, model_cfg["latent_size"]
+        ).to(device)
         predictor.load_state_dict(pred_ckpt["predictor"])
         predictor.eval()
 
@@ -74,22 +85,46 @@ def main():
     refinement_fracs = []
     while generated < cfg.sampling.num_images:
         batch_size = min(cfg.sampling.batch_size, cfg.sampling.num_images - generated)
-        shape = (batch_size, cfg.model.in_channels, cfg.model.latent_size, cfg.model.latent_size)
+        shape = (
+            batch_size,
+            model_cfg["in_channels"],
+            model_cfg["latent_size"],
+            model_cfg["latent_size"],
+        )
         with Timer() as timer:
             if args.mode == "racd":
                 z0, features = sample_loop(
-                    model, diffusion, shape, device, cfg.sampling.ddim_steps, return_features=True
+                    model,
+                    diffusion,
+                    shape,
+                    device,
+                    cfg.sampling.ddim_steps,
+                    return_features=True,
+                    feature_timestep=feature_timestep,
                 )
                 difficulty = predictor(features)
                 mask = (difficulty > args.tau).float()
                 refinement_fracs.append(float(mask.mean().detach().cpu()))
                 z0 = masked_cyclic_refine(
-                    model, diffusion, z0, cfg.sampling.cyclic_t_start, mask, device
+                    model,
+                    diffusion,
+                    z0,
+                    cfg.sampling.cyclic_t_start,
+                    mask,
+                    device,
+                    cfg.sampling.ddim_steps,
                 )
             else:
                 z0 = sample_loop(model, diffusion, shape, device, cfg.sampling.ddim_steps)
             if args.mode == "global_cyclic":
-                z0 = global_cyclic_refine(model, diffusion, z0, cfg.sampling.cyclic_t_start, device)
+                z0 = global_cyclic_refine(
+                    model,
+                    diffusion,
+                    z0,
+                    cfg.sampling.cyclic_t_start,
+                    device,
+                    cfg.sampling.ddim_steps,
+                )
         times.append(timer.elapsed / batch_size)
         save_decoded_batch(vae, z0, out_dir, args.mode, generated)
         generated += batch_size
