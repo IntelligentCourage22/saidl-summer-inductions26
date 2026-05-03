@@ -44,6 +44,11 @@ training:
   val_every: 1000
   max_val_batches: 16
   save_every: 1000
+  sample_every: 5000
+  sample_num_images: 16
+  sample_batch_size: 8
+  sample_ddim_steps: 100
+  sample_output_dir: "results/diffusion/training_samples"
   amp: true
   output_dir: "results/diffusion/baseline_dit"
   checkpoint_dir: "checkpoints/diffusion/baseline_dit"

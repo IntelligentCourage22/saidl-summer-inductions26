@@ -7,6 +7,7 @@ from pathlib import Path
 
 import torch
 from torch.utils.data import DataLoader
+from torchvision.utils import make_grid, save_image
 from tqdm import tqdm
 
 sys_path = os.path.dirname(os.path.abspath(__file__))
@@ -16,6 +17,7 @@ sys.path.insert(0, sys_path)
 
 from data.dataset import LandscapeDataset, split_image_paths
 from diffusion.gaussian_diffusion import GaussianDiffusion
+from diffusion.samplers import sample_loop
 from models.dit import LatentDiT
 from models.vae import FrozenVAE
 from utils import (
@@ -58,6 +60,50 @@ def save_checkpoint(path, model, ema, optimizer, scheduler, scaler, step, epoch,
         },
         path,
     )
+
+
+@torch.no_grad()
+def save_training_sample_grid(model, ema, vae, diffusion, cfg, device, step):
+    raw_model = unwrap_model(model)
+    sample_dir = ensure_dir(getattr(cfg.training, "sample_output_dir", "results/diffusion/training_samples"))
+    num_images = int(getattr(cfg.training, "sample_num_images", 16))
+    batch_size = int(getattr(cfg.training, "sample_batch_size", cfg.sampling.batch_size))
+    ddim_steps = int(getattr(cfg.training, "sample_ddim_steps", cfg.sampling.ddim_steps))
+    image_batches = []
+    original_state = {
+        name: value.detach().cpu().clone()
+        for name, value in raw_model.state_dict().items()
+        if torch.is_floating_point(value)
+    }
+
+    try:
+        if ema is not None:
+            ema.copy_to(raw_model)
+        raw_model.eval()
+        generated = 0
+        while generated < num_images:
+            current_batch = min(batch_size, num_images - generated)
+            shape = (
+                current_batch,
+                cfg.model.in_channels,
+                cfg.model.latent_size,
+                cfg.model.latent_size,
+            )
+            latents = sample_loop(raw_model, diffusion, shape, device, ddim_steps)
+            images = ((vae.decode(latents).detach().cpu() + 1) / 2).clamp(0, 1)
+            image_batches.append(images)
+            generated += current_batch
+    finally:
+        state = raw_model.state_dict()
+        for name, value in original_state.items():
+            state[name].copy_(value.to(device=state[name].device, dtype=state[name].dtype))
+        raw_model.load_state_dict(state)
+        model.train()
+
+    images = torch.cat(image_batches, dim=0)
+    nrow = min(4, num_images)
+    grid = make_grid(images, nrow=nrow)
+    save_image(grid, sample_dir / f"step_{step:06d}.png")
 
 
 def build_lr_scheduler(optimizer, max_steps, warmup_steps, min_lr_ratio=0.0):
@@ -159,7 +205,7 @@ def main():
         getattr(cfg.training, "warmup_steps", 0),
         min_lr_ratio,
     )
-    ema = EMAModel(model, float(cfg.training.ema_decay))
+    ema = EMAModel(unwrap_model(model), float(cfg.training.ema_decay))
     amp_enabled = bool(cfg.training.amp) and device.type == "cuda"
     scaler = torch.amp.GradScaler("cuda", enabled=amp_enabled)
     run = maybe_init_wandb(config)
@@ -260,6 +306,18 @@ def main():
                         config,
                     )
 
+                sample_every = getattr(cfg.training, "sample_every", 0)
+                if sample_every and global_step % sample_every == 0:
+                    save_training_sample_grid(
+                        model,
+                        ema,
+                        vae,
+                        diffusion,
+                        cfg,
+                        device,
+                        global_step,
+                    )
+
                 if cfg.training.max_steps and global_step >= cfg.training.max_steps:
                     break
 
@@ -277,6 +335,16 @@ def main():
         epoch,
         config,
     )
+    if getattr(cfg.training, "sample_every", 0):
+        save_training_sample_grid(
+            model,
+            ema,
+            vae,
+            diffusion,
+            cfg,
+            device,
+            global_step,
+        )
     with open(output_dir / "final_metrics.json", "w", encoding="utf-8") as handle:
         json.dump(
             {
