@@ -1,0 +1,6 @@
+{
+  "real_dir": "results/diffusion/real_val",
+  "generated_dir": "results/diffusion/samples/global_cyclic",
+  "fid": 374.0991695740053,
+  "cmmd": 0.0022088289260864258
+}

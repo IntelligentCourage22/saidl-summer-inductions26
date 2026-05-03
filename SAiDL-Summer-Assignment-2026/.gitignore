@@ -1,0 +1,6 @@
+
+# Experiment artifacts
+checkpoints/
+*.pt
+*.pth
+*.ckpt

@@ -1,0 +1,7 @@
+{
+  "mode": "global_cyclic",
+  "num_images": 16,
+  "mean_time_sec_per_image": 0.6334886848926544,
+  "tau": null,
+  "mean_refinement_fraction": null
+}

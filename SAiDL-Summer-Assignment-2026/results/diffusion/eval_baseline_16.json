@@ -1,0 +1,6 @@
+{
+  "real_dir": "results/diffusion/real_val",
+  "generated_dir": "results/diffusion/samples/baseline",
+  "fid": 380.32768719546186,
+  "cmmd": 0.0022069215774536133
+}
