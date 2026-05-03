@@ -129,9 +129,9 @@ Pareto frontier rather than relying only on the scalar score.
 \toprule
 Method & FID $\downarrow$ & CMMD $\downarrow$ & Time (s/img) & Refined Fraction \\
 \midrule
-Baseline DiT & -- & -- & -- & 0.00 \\
-Global Cyclic & -- & -- & -- & 1.00 \\
-RACD best $\tau$ & -- & -- & -- & -- \\
+Baseline DiT & 348.33 & 0.0022148 & 0.1333 & 0.00 \\
+Global Cyclic & 349.11 & 0.0022110 & 0.1563 & 1.00 \\
+RACD $\tau=0.2$ & 349.10 & 0.0022111 & 0.1564 & 0.573 \\
 \bottomrule
 \end{tabular}
 \caption{Main comparison. Fill this table from
@@ -144,15 +144,15 @@ RACD best $\tau$ & -- & -- & -- & -- \\
 \toprule
 $\tau$ & CMMD $\downarrow$ & Time (s/img) & Refined Fraction \\
 \midrule
-0.1 & -- & -- & -- \\
-0.2 & -- & -- & -- \\
-0.3 & -- & -- & -- \\
-0.4 & -- & -- & -- \\
-0.5 & -- & -- & -- \\
-0.6 & -- & -- & -- \\
-0.7 & -- & -- & -- \\
-0.8 & -- & -- & -- \\
-0.9 & -- & -- & -- \\
+0.1 & 0.0022112 & 0.1615 & 0.817 \\
+0.2 & 0.0022111 & 0.1564 & 0.573 \\
+0.3 & 0.0022111 & 0.1565 & 0.394 \\
+0.4 & 0.0022112 & 0.1620 & 0.257 \\
+0.5 & 0.0022112 & 0.1621 & 0.155 \\
+0.6 & 0.0022112 & 0.1613 & 0.082 \\
+0.7 & 0.0022112 & 0.1557 & 0.035 \\
+0.8 & 0.0022112 & 0.1590 & 0.010 \\
+0.9 & 0.0022112 & 0.1562 & 0.001 \\
 \bottomrule
 \end{tabular}
 \caption{RACD threshold sweep.}
@@ -190,9 +190,14 @@ The final analysis should answer four questions directly:
 
 \section{Conclusion}
 
-The code now implements the complete experimental pipeline required by the
-assignment. The report becomes complete only after the DiT, predictor, sampling,
-evaluation, and tau-sweep runs have produced real numbers and generated image
-grids.
+The implementation satisfies the main RACD pipeline required by the assignment:
+baseline latent DiT sampling, global cyclic refinement, frozen-feature difficulty
+prediction, masked RACD refinement, FID/CMMD/time measurement, and a tau sweep.
+In this run, global cyclic refinement marginally improved CMMD but did not improve
+FID over the baseline. RACD at $\tau=0.2$ closely matched global cyclic CMMD while
+refining only 57.3\% of latent locations. However, the gains are modest, and the
+baseline remains strongest by FID, suggesting that the DiT checkpoint is still
+undertrained or that the predictor needs stronger supervision before RACD can
+produce a clear fidelity win.
 
 \end{document}
