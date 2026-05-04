@@ -103,7 +103,28 @@ def save_training_sample_grid(model, ema, vae, diffusion, cfg, device, step):
     images = torch.cat(image_batches, dim=0)
     nrow = min(4, num_images)
     grid = make_grid(images, nrow=nrow)
-    save_image(grid, sample_dir / f"step_{step:06d}.png")
+    path = sample_dir / f"step_{step:06d}.png"
+    save_image(grid, path)
+    return path
+
+
+def log_checkpoint_artifact(run, cfg, checkpoint_path, step, sample_path=None):
+    if run is None:
+        return
+
+    import wandb
+
+    artifact_name = getattr(
+        cfg.training, "artifact_name", "diffusion-baseline-dit-checkpoints"
+    )
+    artifact = wandb.Artifact(artifact_name, type="model")
+    artifact.add_file(str(checkpoint_path), name=Path(checkpoint_path).name)
+    if sample_path is not None and Path(sample_path).exists():
+        artifact.add_file(str(sample_path), name=f"samples/{Path(sample_path).name}")
+
+    logged = run.log_artifact(artifact, aliases=["latest", f"step-{step}"])
+    if bool(getattr(cfg.training, "artifact_wait", True)):
+        logged.wait()
 
 
 def build_lr_scheduler(optimizer, max_steps, warmup_steps, min_lr_ratio=0.0):
@@ -293,9 +314,11 @@ def main():
                         if run is not None:
                             run.log(record, step=global_step)
 
+                checkpoint_path = None
                 if global_step % cfg.training.save_every == 0:
+                    checkpoint_path = checkpoint_dir / f"step_{global_step}.pt"
                     save_checkpoint(
-                        checkpoint_dir / f"step_{global_step}.pt",
+                        checkpoint_path,
                         model,
                         ema,
                         optimizer,
@@ -307,8 +330,9 @@ def main():
                     )
 
                 sample_every = getattr(cfg.training, "sample_every", 0)
+                sample_path = None
                 if sample_every and global_step % sample_every == 0:
-                    save_training_sample_grid(
+                    sample_path = save_training_sample_grid(
                         model,
                         ema,
                         vae,
@@ -318,14 +342,34 @@ def main():
                         global_step,
                     )
 
+                artifact_every = getattr(cfg.training, "artifact_every", 0)
+                if artifact_every and global_step % artifact_every == 0:
+                    if checkpoint_path is None:
+                        checkpoint_path = checkpoint_dir / f"step_{global_step}.pt"
+                        save_checkpoint(
+                            checkpoint_path,
+                            model,
+                            ema,
+                            optimizer,
+                            scheduler,
+                            scaler,
+                            global_step,
+                            epoch,
+                            config,
+                        )
+                    log_checkpoint_artifact(
+                        run, cfg, checkpoint_path, global_step, sample_path
+                    )
+
                 if cfg.training.max_steps and global_step >= cfg.training.max_steps:
                     break
 
         if cfg.training.max_steps and global_step >= cfg.training.max_steps:
             break
 
+    final_checkpoint_path = checkpoint_dir / "final.pt"
     save_checkpoint(
-        checkpoint_dir / "final.pt",
+        final_checkpoint_path,
         model,
         ema,
         optimizer,
@@ -335,8 +379,9 @@ def main():
         epoch,
         config,
     )
+    final_sample_path = None
     if getattr(cfg.training, "sample_every", 0):
-        save_training_sample_grid(
+        final_sample_path = save_training_sample_grid(
             model,
             ema,
             vae,
@@ -344,6 +389,10 @@ def main():
             cfg,
             device,
             global_step,
+        )
+    if getattr(cfg.training, "artifact_every", 0):
+        log_checkpoint_artifact(
+            run, cfg, final_checkpoint_path, global_step, final_sample_path
         )
     with open(output_dir / "final_metrics.json", "w", encoding="utf-8") as handle:
         json.dump(

@@ -49,6 +49,9 @@ training:
   sample_batch_size: 8
   sample_ddim_steps: 100
   sample_output_dir: "results/diffusion/training_samples_compact"
+  artifact_every: 0
+  artifact_name: "diffusion-baseline-dit-compact-checkpoints"
+  artifact_wait: true
   amp: true
   output_dir: "results/diffusion/baseline_dit_compact"
   checkpoint_dir: "checkpoints/diffusion/baseline_dit_compact"
