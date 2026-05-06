@@ -69,6 +69,25 @@ Training uses AdamW with weight decay, gradient clipping, EMA weights, mixed
 precision, linear warmup, and cosine learning-rate decay. A compact config is
 kept only for smoke tests and is not used for final reported numbers.
 
+\subsection{Training Diagnostics and Checkpoint Selection}
+
+During training, I initially monitored generated grids using the EMA copy of
+the DiT. This produced highly noisy samples even after thousands of optimizer
+steps. Rather than treating this as conclusive model failure, I compared EMA
+sampling against the raw checkpoint weights. At step 16000, the raw weights
+already produced recognizable landscape structure, including broad sky and
+terrain regions, while the EMA samples were still dominated by high-frequency
+color noise.
+
+The diagnosis is that an EMA decay of 0.9999 is too slow to use as the only
+visual monitor in a short Kaggle-scale run. EMA is still useful for longer
+training, but early samples from the averaged weights can lag far behind the
+current denoiser. I therefore used raw-weight sample grids for checkpoint
+selection during training, while keeping EMA checkpoints available for later
+comparison. This debugging step also changed the training workflow: checkpoints
+and sample grids are now uploaded as W\&B artifacts so interrupted Kaggle
+sessions can be resumed instead of restarting from scratch.
+
 \subsection{Global Cyclic Refinement}
 
 After standard DDIM sampling reaches $z_0$, global cyclic refinement applies
