@@ -8,6 +8,7 @@ data:
   max_train_images: 5000
   max_val_images: 1000
   num_workers: 2
+  train_augment: true
 
 vae:
   model_name: "stabilityai/sd-vae-ft-ema"

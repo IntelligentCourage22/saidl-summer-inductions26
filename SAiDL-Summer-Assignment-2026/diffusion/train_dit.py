@@ -177,7 +177,12 @@ def main():
         cfg.data.max_val_images,
         cfg.seed,
     )
-    train_ds = LandscapeDataset(train_paths, cfg.data.image_size)
+    train_ds = LandscapeDataset(
+        train_paths,
+        cfg.data.image_size,
+        train=True,
+        augment=bool(getattr(cfg.data, "train_augment", True)),
+    )
     val_ds = LandscapeDataset(val_paths, cfg.data.image_size, train=False)
     train_loader = DataLoader(
         train_ds,

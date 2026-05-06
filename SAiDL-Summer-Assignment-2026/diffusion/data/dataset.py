@@ -47,9 +47,9 @@ def split_image_paths(
 
 
 class LandscapeDataset(Dataset):
-    def __init__(self, image_paths, image_size=256, train=True):
+    def __init__(self, image_paths, image_size=256, train=True, augment=True):
         self.image_paths = list(image_paths)
-        if train:
+        if train and augment:
             transform_steps = [
                 transforms.RandomResizedCrop(
                     image_size,
