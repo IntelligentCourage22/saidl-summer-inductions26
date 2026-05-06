@@ -70,6 +70,7 @@ def save_training_sample_grid(model, ema, vae, diffusion, cfg, device, step):
     batch_size = int(getattr(cfg.training, "sample_batch_size", cfg.sampling.batch_size))
     ddim_steps = int(getattr(cfg.training, "sample_ddim_steps", cfg.sampling.ddim_steps))
     image_batches = []
+    use_ema = bool(getattr(cfg.training, "sample_use_ema", False))
     original_state = {
         name: value.detach().cpu().clone()
         for name, value in raw_model.state_dict().items()
@@ -77,7 +78,7 @@ def save_training_sample_grid(model, ema, vae, diffusion, cfg, device, step):
     }
 
     try:
-        if ema is not None:
+        if use_ema and ema is not None:
             ema.copy_to(raw_model)
         raw_model.eval()
         generated = 0

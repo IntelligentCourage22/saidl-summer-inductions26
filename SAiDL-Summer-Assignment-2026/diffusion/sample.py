@@ -32,6 +32,7 @@ def parse_args():
     )
     parser.add_argument("--predictor-checkpoint", default=None)
     parser.add_argument("--tau", type=float, default=0.5)
+    parser.add_argument("--no-ema", action="store_true")
     parser.add_argument(
         "--config", default=os.path.join(sys_path, "configs", "dit_landscape.yaml")
     )
@@ -50,7 +51,7 @@ def main():
     model_cfg = checkpoint.get("config", config)["model"]
     model = LatentDiT(**model_cfg).to(device)
     model.load_state_dict(checkpoint["model"])
-    if checkpoint.get("model_ema") is not None:
+    if checkpoint.get("model_ema") is not None and not args.no_ema:
         ema = EMAModel(model)
         ema.load_state_dict(checkpoint["model_ema"])
         ema.copy_to(model)
@@ -137,6 +138,7 @@ def main():
         "mean_refinement_fraction": sum(refinement_fracs) / len(refinement_fracs)
         if refinement_fracs
         else None,
+        "weights": "raw" if args.no_ema else "ema",
     }
     with open(out_dir / "sampling_summary.json", "w", encoding="utf-8") as handle:
         json.dump(summary, handle, indent=2)
