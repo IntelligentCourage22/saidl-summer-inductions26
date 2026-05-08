@@ -1,0 +1,29 @@
+{
+  "checkpoint": "checkpoints/core_ml_gqa_alibi_512/final.pt",
+  "positional_encoding": "alibi",
+  "attention_type": "gqa",
+  "train_seq_len": 512,
+  "evaluations": [
+    {
+      "loss": 5.0252902816208485,
+      "perplexity": 152.2144347530723,
+      "total_tokens": 249344,
+      "seq_len": 512,
+      "eval_time_sec": 8.17
+    },
+    {
+      "loss": 5.003280525835454,
+      "perplexity": 148.90083177938672,
+      "total_tokens": 248832,
+      "seq_len": 1024,
+      "eval_time_sec": 9.91
+    },
+    {
+      "loss": 4.99559391431572,
+      "perplexity": 147.76067650958765,
+      "total_tokens": 247808,
+      "seq_len": 2048,
+      "eval_time_sec": 13.29
+    }
+  ]
+}

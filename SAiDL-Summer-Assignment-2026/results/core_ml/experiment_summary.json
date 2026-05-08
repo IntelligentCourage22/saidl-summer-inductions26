@@ -1,0 +1,190 @@
+{
+  "provenance": {
+    "source": "W&B summaries, Kaggle/Colab output JSON, and user-provided run logs.",
+    "note": "Large checkpoints and raw output directories are intentionally excluded from git."
+  },
+  "main_1024_context_runs": [
+    {
+      "name": "standard_sinusoidal",
+      "attention_type": "standard",
+      "positional_encoding": "sinusoidal",
+      "block_type": "standard",
+      "context": 1024,
+      "step": 8500,
+      "validation_loss": 5.861950105109823,
+      "validation_perplexity": 351.4087602851825,
+      "validation_throughput_tps": 29636.663131069712,
+      "train_peak_memory_mb": 4182.75
+    },
+    {
+      "name": "sliding_window_sinusoidal",
+      "attention_type": "sliding_window",
+      "positional_encoding": "sinusoidal",
+      "block_type": "standard",
+      "context": 1024,
+      "step": 5500,
+      "validation_loss": 6.051988585986227,
+      "validation_perplexity": 424.95725440104445,
+      "validation_throughput_tps": 28301.103377577885,
+      "train_peak_memory_mb": 4188.654296875
+    },
+    {
+      "name": "linear_sinusoidal",
+      "attention_type": "linear",
+      "positional_encoding": "sinusoidal",
+      "block_type": "standard",
+      "context": 1024,
+      "step": 8500,
+      "validation_loss": 5.85647432303723,
+      "validation_perplexity": 349.48978124588814,
+      "validation_throughput_tps": 23573.862937097307,
+      "train_peak_memory_mb": 4981.47265625
+    },
+    {
+      "name": "gqa_sinusoidal",
+      "attention_type": "gqa",
+      "positional_encoding": "sinusoidal",
+      "block_type": "standard",
+      "context": 1024,
+      "step": 8500,
+      "validation_loss": 5.8104949821660545,
+      "validation_perplexity": 333.78430206834355,
+      "validation_throughput_tps": 29830.34324307291,
+      "train_peak_memory_mb": 4155.673828125
+    },
+    {
+      "name": "gqa_rope_best",
+      "attention_type": "gqa",
+      "positional_encoding": "rope",
+      "block_type": "standard",
+      "context": 1024,
+      "step": 6500,
+      "validation_loss": 5.0124874762546865,
+      "validation_perplexity": 150.2780847760957
+    },
+    {
+      "name": "gqa_rope_final",
+      "attention_type": "gqa",
+      "positional_encoding": "rope",
+      "block_type": "standard",
+      "context": 1024,
+      "step": 8500,
+      "validation_loss": 5.028657822942537,
+      "validation_perplexity": 152.7278872028046,
+      "validation_throughput_tps": 29504.76874003217,
+      "train_peak_memory_mb": 4155.068359375
+    },
+    {
+      "name": "gqa_alibi_best",
+      "attention_type": "gqa",
+      "positional_encoding": "alibi",
+      "block_type": "standard",
+      "context": 1024,
+      "step": 7000,
+      "validation_loss": 4.985221580222801,
+      "validation_perplexity": 146.23597443628742,
+      "validation_throughput_tps": 28440.731121569373,
+      "train_peak_memory_mb": 4153.5712890625
+    },
+    {
+      "name": "gqa_alibi_final",
+      "attention_type": "gqa",
+      "positional_encoding": "alibi",
+      "block_type": "standard",
+      "context": 1024,
+      "step": 8500,
+      "validation_loss": 4.996332101861145,
+      "validation_perplexity": 147.86979186953548,
+      "validation_throughput_tps": 28478.971797503047,
+      "train_peak_memory_mb": 4153.5712890625
+    },
+    {
+      "name": "gqa_relative",
+      "attention_type": "gqa",
+      "positional_encoding": "relative",
+      "block_type": "standard",
+      "context": 1024,
+      "step": 8500,
+      "validation_loss": 5.4632325662997525,
+      "validation_perplexity": 235.85862202450716,
+      "validation_throughput_tps": 25015.050296121,
+      "train_peak_memory_mb": 4202.53125
+    },
+    {
+      "name": "gqa_alibi_conv_before_best",
+      "attention_type": "gqa",
+      "positional_encoding": "alibi",
+      "block_type": "conv_before",
+      "context": 1024,
+      "step": 4000,
+      "validation_loss": 5.158068,
+      "validation_perplexity": 173.828289,
+      "validation_throughput_tps": 20122.532722,
+      "train_peak_memory_mb": 6453.462891
+    },
+    {
+      "name": "gqa_alibi_gated_conv_best",
+      "attention_type": "gqa",
+      "positional_encoding": "alibi",
+      "block_type": "gated_conv",
+      "context": 1024,
+      "step": 4500,
+      "validation_loss": 4.993861,
+      "validation_perplexity": 147.504773,
+      "validation_throughput_tps": 19425.99118,
+      "train_peak_memory_mb": 6832.472656
+    }
+  ],
+  "length_extrapolation": {
+    "name": "gqa_alibi_512",
+    "train_context": 512,
+    "best_step": 5500,
+    "best_validation_loss": 5.011684023134517,
+    "best_validation_perplexity": 150.15739187202712,
+    "final_validation_perplexity": 152.2144304309708,
+    "final_test_perplexity": 161.45148211473423,
+    "evaluations": [
+      {
+        "eval_context": 512,
+        "validation_loss": 5.0252902816208485,
+        "validation_perplexity": 152.2144347530723
+      },
+      {
+        "eval_context": 1024,
+        "validation_loss": 5.003280525835454,
+        "validation_perplexity": 148.90083177938672
+      },
+      {
+        "eval_context": 2048,
+        "validation_loss": 4.99559391431572,
+        "validation_perplexity": 147.76067650958765
+      }
+    ]
+  },
+  "latency_benchmarks": [
+    {
+      "name": "gqa_alibi",
+      "batch_size": 2,
+      "benchmarks": [
+        {
+          "seq_len": 512,
+          "tokens_per_sec": 25746.3,
+          "avg_ms": 39.77,
+          "peak_memory_mb": 369.0
+        },
+        {
+          "seq_len": 1024,
+          "tokens_per_sec": 27236.4,
+          "avg_ms": 75.19,
+          "peak_memory_mb": 568.1
+        },
+        {
+          "seq_len": 2048,
+          "tokens_per_sec": 20248.2,
+          "avg_ms": 202.29,
+          "peak_memory_mb": 968.5
+        }
+      ]
+    }
+  ]
+}

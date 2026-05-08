@@ -285,4 +285,12 @@ same codebase should add more baseline latency comparisons and, if compute
 allows, repeat the 512-to-2048 extrapolation test for RoPE. The current results
 already support GQA + ALiBi as the final Core ML submission model.
 
+\section{Reproducibility Artifacts}
+
+The compact experiment artifacts used in this report are versioned under
+\texttt{results/core\_ml/}. This includes final metric JSON files, available
+training-log tails, extrapolation outputs, latency benchmarks, and an aggregate
+\texttt{experiment\_summary.json}. Large checkpoints and raw W\&B/output
+directories are intentionally excluded from git to keep the repository small.
+
 \end{document}
