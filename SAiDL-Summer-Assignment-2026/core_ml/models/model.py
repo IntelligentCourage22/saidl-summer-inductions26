@@ -238,3 +238,14 @@ class TransformerLM(nn.Module):
 
     def count_parameters(self):
         return sum(p.numel() for p in self.parameters() if p.requires_grad)
+
+    def resize_position_buffers(self, max_seq_len):
+        """Extend non-learned positional caches before long-context evaluation."""
+        max_seq_len = max(max_seq_len, self.max_seq_len)
+        self.max_seq_len = max_seq_len
+        for module in self.modules():
+            if module is self:
+                continue
+            resize = getattr(module, "resize_max_seq_len", None)
+            if resize is not None:
+                resize(max_seq_len)

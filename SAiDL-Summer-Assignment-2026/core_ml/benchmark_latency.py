@@ -153,6 +153,21 @@ def main():
         default=2,
         help="Number of KV heads for GQA (default: 2)",
     )
+    parser.add_argument(
+        "--wandb",
+        action="store_true",
+        help="Log benchmark metrics to W&B.",
+    )
+    parser.add_argument(
+        "--wandb_project",
+        default="SAiDL-LongContext",
+        help="W&B project name (default: SAiDL-LongContext).",
+    )
+    parser.add_argument(
+        "--wandb_entity",
+        default="ansh0-bits-pilani",
+        help="W&B entity name.",
+    )
     args = parser.parse_args()
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -188,6 +203,28 @@ def main():
         "device": str(device),
         "benchmarks": [],
     }
+    run = None
+    if args.wandb:
+        try:
+            import wandb
+
+            run = wandb.init(
+                project=args.wandb_project,
+                entity=args.wandb_entity,
+                job_type="core_ml_latency",
+                name=(
+                    f"latency_{args.attention_type}_"
+                    f"{args.positional_encoding}_{args.block_type}"
+                ),
+                config=results | {
+                    "seq_lens": args.seq_lens,
+                    "warmup": args.warmup,
+                    "repeats": args.repeats,
+                    "n_kv_heads": args.n_kv_heads,
+                },
+            )
+        except ImportError:
+            print("wandb not installed; continuing without W&B logging.")
 
     print(
         f"{'Seq Len':>8}  {'Tokens/s':>12}  {'Avg (ms)':>10}  {'Peak Mem (MB)':>14}"
@@ -196,10 +233,21 @@ def main():
 
     for seq_len in args.seq_lens:
         try:
+            model.resize_position_buffers(seq_len)
             bench = benchmark_forward(
                 model, seq_len, args.batch_size, device, args.warmup, args.repeats
             )
             results["benchmarks"].append(bench)
+            if run is not None:
+                run.log(
+                    {
+                        "seq_len": seq_len,
+                        "latency/tokens_per_sec": bench["tokens_per_sec"],
+                        "latency/avg_ms": bench["avg_ms"],
+                        "latency/peak_memory_mb": bench["peak_memory_mb"],
+                    },
+                    step=seq_len,
+                )
             print(
                 f"{bench['seq_len']:>8}  "
                 f"{bench['tokens_per_sec']:>12,.1f}  "
@@ -225,6 +273,9 @@ def main():
     with open(output_path, "w", encoding="utf-8") as f:
         json.dump(results, f, indent=2)
     print(f"\nResults saved to {output_path}")
+
+    if run is not None:
+        run.finish()
 
 
 if __name__ == "__main__":

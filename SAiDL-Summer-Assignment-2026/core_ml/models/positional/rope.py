@@ -10,17 +10,39 @@ class RotaryEmbedding(nn.Module):
         if dim % 2 != 0:
             raise ValueError("RoPE requires an even head dimension.")
 
-        inv_freq = 1.0 / (
-            base ** (torch.arange(0, dim, 2, dtype=torch.float32) / dim)
-        )
-        positions = torch.arange(max_seq_len, dtype=torch.float32)
-        freqs = torch.einsum("i,j->ij", positions, inv_freq)
+        self.dim = dim
+        self.max_seq_len = max_seq_len
+        self.base = base
+        cos, sin = self._build_cache(max_seq_len, device=None)
+        self.register_buffer("cos", cos, persistent=False)
+        self.register_buffer("sin", sin, persistent=False)
 
-        self.register_buffer("cos", freqs.cos()[None, None, :, :], persistent=False)
-        self.register_buffer("sin", freqs.sin()[None, None, :, :], persistent=False)
+    def _build_cache(self, max_seq_len, device):
+        inv_freq = 1.0 / (
+            self.base
+            ** (
+                torch.arange(0, self.dim, 2, dtype=torch.float32, device=device)
+                / self.dim
+            )
+        )
+        positions = torch.arange(max_seq_len, dtype=torch.float32, device=device)
+        freqs = torch.einsum("i,j->ij", positions, inv_freq)
+        return freqs.cos()[None, None, :, :], freqs.sin()[None, None, :, :]
+
+    def resize_max_seq_len(self, max_seq_len):
+        """Extend cached rotary frequencies for longer-context evaluation."""
+        if max_seq_len <= self.max_seq_len:
+            return
+
+        cos, sin = self._build_cache(max_seq_len, self.cos.device)
+        self.cos = cos
+        self.sin = sin
+        self.max_seq_len = max_seq_len
 
     def forward(self, q, k):
         seq_len = q.size(-2)
+        if seq_len > self.max_seq_len:
+            self.resize_max_seq_len(seq_len)
         cos = self.cos[:, :, :seq_len, :].to(dtype=q.dtype, device=q.device)
         sin = self.sin[:, :, :seq_len, :].to(dtype=q.dtype, device=q.device)
         return self.apply_rotary(q, cos, sin), self.apply_rotary(k, cos, sin)

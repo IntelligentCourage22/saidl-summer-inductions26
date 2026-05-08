@@ -66,6 +66,35 @@ def load_checkpoint(checkpoint_path, device):
     return model, config, cfg
 
 
+def maybe_init_wandb(config, args, pe_type, attn_type, train_seq_len):
+    """Reuse the checkpoint's W&B settings for extrapolation runs."""
+    wandb_cfg = config.get("wandb", {})
+    if not wandb_cfg.get("enabled", False):
+        return None
+
+    try:
+        import wandb
+    except ImportError:
+        print("wandb not installed; continuing without W&B logging.")
+        return None
+
+    return wandb.init(
+        project=wandb_cfg.get("project", "SAiDL-LongContext"),
+        entity=wandb_cfg.get("entity"),
+        job_type="core_ml_extrapolation",
+        name=f"extrapolation_{attn_type}_{pe_type}_train{train_seq_len}",
+        config={
+            "checkpoint": args.checkpoint,
+            "eval_seq_lens": args.eval_seq_lens,
+            "batch_size": args.batch_size,
+            "max_batches": args.max_batches,
+            "attention_type": attn_type,
+            "positional_encoding": pe_type,
+            "train_seq_len": train_seq_len,
+        },
+    )
+
+
 def main():
     parser = argparse.ArgumentParser(
         description="Evaluate positional encoding extrapolation (Task 3c)",
@@ -117,6 +146,8 @@ def main():
     print(f"Device:      {device}")
     print()
 
+    run = maybe_init_wandb(config, args, pe_type, attn_type, train_seq_len)
+
     results = {
         "checkpoint": args.checkpoint,
         "positional_encoding": pe_type,
@@ -128,8 +159,7 @@ def main():
     for seq_len in args.eval_seq_lens:
         print(f"Evaluating at seq_len={seq_len}... ", end="", flush=True)
 
-        # Override max_seq_len so the model doesn't reject longer sequences
-        model.max_seq_len = max(model.max_seq_len, seq_len)
+        model.resize_position_buffers(seq_len)
 
         try:
             _, val_loader, _ = get_dataloaders(
@@ -150,6 +180,17 @@ def main():
             metrics["seq_len"] = seq_len
             metrics["eval_time_sec"] = round(elapsed, 2)
             results["evaluations"].append(metrics)
+            if run is not None:
+                run.log(
+                    {
+                        "eval_seq_len": seq_len,
+                        "extrapolation/loss": metrics["loss"],
+                        "extrapolation/perplexity": metrics["perplexity"],
+                        "extrapolation/total_tokens": metrics["total_tokens"],
+                        "extrapolation/eval_time_sec": metrics["eval_time_sec"],
+                    },
+                    step=seq_len,
+                )
 
             print(
                 f"perplexity={metrics['perplexity']:.2f}  "
@@ -182,6 +223,9 @@ def main():
     with open(output_path, "w", encoding="utf-8") as f:
         json.dump(results, f, indent=2)
     print(f"\nResults saved to {output_path}")
+
+    if run is not None:
+        run.finish()
 
 
 if __name__ == "__main__":
