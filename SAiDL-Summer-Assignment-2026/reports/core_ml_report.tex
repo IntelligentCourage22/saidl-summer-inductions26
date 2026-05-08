@@ -140,18 +140,26 @@ with the best attention and positional encoding from the earlier ablations.
 \toprule
 Block Type & Val PPL & Tokens/sec & Peak Memory MB & Notes \\
 \midrule
-Standard & 152.73 (RoPE run) & 31379.15 & 4155.07 & Best current non-hybrid model \\
-Conv Before Attention & -- & -- & -- & Pending \\
-Gated Conv FFN & -- & -- & -- & Pending \\
+Standard & 146.24 & 28440.73 & 4153.57 & Best GQA + ALiBi checkpoint \\
+Conv Before Attention & 173.83 & 20122.53 & 6453.46 & Worse quality and efficiency \\
+Gated Conv FFN & 147.50 & 19425.99 & 6832.47 & Competitive quality but much slower \\
 \bottomrule
 \end{tabular}
 \caption{Hybrid architecture results.}
 \end{table}
 
-At the current stage of the project, the convolution-augmented variants are
-implemented in code but have not yet been benchmarked thoroughly. The strongest
-non-hybrid configuration so far is GQA with RoPE and a standard Transformer
-block, which provides the natural starting point for the hybrid experiments.
+The convolution-augmented variants were evaluated using the strongest attention
+and positional configuration from the earlier experiments: GQA with ALiBi. The
+standard Transformer block remains the best overall trade-off, achieving the
+lowest validation perplexity while also using substantially less memory and
+providing higher throughput. Adding a convolution before attention hurts both
+quality and efficiency, increasing peak training memory from 4153 MB to 6453 MB
+and degrading validation perplexity from 146.24 to 173.83. The gated
+convolutional feed-forward block is much more competitive, reaching validation
+perplexity 147.50, but it is significantly slower and more memory-intensive than
+the standard block. Therefore, the hybrid experiments do not improve the final
+model choice, but they show that gated convolution is a plausible local-context
+augmentation whereas naive pre-attention convolution is not.
 
 \section{Analysis}
 
@@ -183,6 +191,14 @@ mechanism tested so far, and ALiBi is the strongest positional encoding tested s
 This already gives a strong candidate model for the next stages of the project
 and for later hybrid convolution experiments.
 
+The convolution-hybrid experiments do not overturn this hierarchy. Gated
+convolution nearly matches the standard block's validation perplexity, but its
+throughput and memory costs are much worse. The conv-before-attention design is
+clearly dominated in the current setup. This suggests that local convolutional
+mixing can be useful only when integrated carefully into the feed-forward path,
+and even then the marginal quality gain does not justify the compute overhead
+for this assignment-scale model.
+
 \section{Conclusion}
 
 The baseline standard Transformer with sinusoidal positional encoding establishes
@@ -195,7 +211,9 @@ observed validation perplexity. The best logged GQA + ALiBi checkpoint occurs at
 step 7000, where the model reaches validation perplexity 146.24, while the final
 completed run at step 8500 remains close at 147.87. The best GQA + RoPE
 checkpoint reaches validation perplexity 150.28, making it a strong second-best
-positional encoding result.
+positional encoding result. Convolution-hybrid variants do not improve the best
+model: the gated-convolution block is close in perplexity but much slower and
+more memory-intensive, while the conv-before-attention design performs worse.
 
 The main lesson from the ablation study is that long-context modeling quality in
 this setup depends strongly on choosing the right attention and positional
