@@ -104,23 +104,29 @@ Position Method & Attention & Context & Step & Val PPL & Notes \\
 Sinusoidal & GQA & 1024 & 8500 & 333.78 & Fully completed run \\
 RoPE & GQA & 1024 & 6500 & 150.28 & Best logged validation checkpoint \\
 RoPE (final) & GQA & 1024 & 8500 & 152.73 & Completed rerun, slight late-stage degradation \\
-ALiBi & -- & -- & -- & -- & Pending \\
-Relative Bias & -- & -- & -- & -- & Pending \\
+ALiBi & GQA & 1024 & 7000 & 146.24 & Best logged validation checkpoint \\
+ALiBi (final) & GQA & 1024 & 8500 & 147.87 & Completed run, slight late-stage degradation \\
+Relative Bias & GQA & 1024 & 8500 & 235.86 & Completed run, weaker than ALiBi/RoPE \\
 \bottomrule
 \end{tabular}
 \caption{Current positional encoding results.}
 \end{table}
 
-RoPE is the strongest positional encoding tested so far in the current setup.
-The completed GQA + RoPE rerun achieved its best logged validation performance
-at step 6500, reaching validation loss 5.012 and validation perplexity 150.28.
-After this point the validation curve drifted upward slightly, and the final
-checkpoint at step 8500 ended at validation loss 5.029 and validation
-perplexity 152.73. Even this final checkpoint remains dramatically better than
-the GQA + sinusoidal baseline, confirming that RoPE provides a substantial
-improvement for long-context language modeling in this model family. ALiBi and
-relative positional bias are implemented but had not yet been fully evaluated at
-the time of writing.
+ALiBi is the strongest positional encoding tested so far in the current setup.
+The completed GQA + ALiBi run achieved its best logged validation performance at
+step 7000, reaching validation loss 4.985 and validation perplexity 146.24. The
+final checkpoint at step 8500 remained close, with validation loss 4.996 and
+validation perplexity 147.87, indicating only mild late-stage degradation.
+
+RoPE also substantially improves over sinusoidal positional encoding. The
+completed GQA + RoPE rerun achieved its best logged validation performance at
+step 6500, reaching validation loss 5.012 and validation perplexity 150.28.
+Although ALiBi slightly outperforms RoPE in the current experiments, both
+methods dramatically improve over the GQA + sinusoidal baseline. Relative
+positional bias also improves over sinusoidal, reaching validation perplexity
+235.86, but it underperforms both ALiBi and RoPE by a wide margin. This suggests
+that the simple learned relative-bias formulation used here is less effective
+than the more structured extrapolation-friendly encodings in this setting.
 
 \section{Convolution-Attention Hybrids}
 
@@ -162,16 +168,18 @@ training memory and maintaining very similar throughput. This makes GQA the most
 attractive attention choice among the tested variants.
 
 The positional encoding experiments point even more strongly toward the
-importance of architecture choices for long-context behavior. RoPE produced a
-very large improvement when paired with GQA, reducing validation perplexity from
-333.78 for GQA + sinusoidal to a best logged value of 150.28. The validation
-curve indicates that the model performs best around step 6500 and then degrades
-slightly afterward, suggesting mild late-stage overfitting rather than
-instability. This is still a clear win for RoPE and makes it the strongest
-positional encoding result in the project so far.
+importance of architecture choices for long-context behavior. ALiBi and RoPE
+both produce very large improvements when paired with GQA. ALiBi reduces
+validation perplexity from 333.78 for GQA + sinusoidal to a best logged value of
+146.24, while RoPE reaches 150.28. Both curves show mild late-stage degradation
+after their best checkpoints, suggesting overfitting or diminishing returns
+rather than optimization instability. Relative positional bias reaches validation
+perplexity 235.86, which is a substantial improvement over sinusoidal but still
+well behind ALiBi and RoPE. In the current experiments, ALiBi gives the best
+positional encoding result, with RoPE as a close second.
 
 Overall, the experiments suggest a useful hierarchy: GQA is the best attention
-mechanism tested so far, and RoPE is the most promising positional encoding.
+mechanism tested so far, and ALiBi is the strongest positional encoding tested so far.
 This already gives a strong candidate model for the next stages of the project
 and for later hybrid convolution experiments.
 
@@ -181,11 +189,13 @@ The baseline standard Transformer with sinusoidal positional encoding establishe
 a reasonable starting point, but it is clearly not the strongest model in the
 current study. GQA emerges as the best attention variant, outperforming
 standard, sliding-window, and linear attention on validation perplexity while
-remaining efficient in both memory and throughput. RoPE further improves results
-substantially when combined with GQA, making GQA + RoPE the strongest model
-observed so far. The best logged RoPE checkpoint occurs at step 6500, where the
-model reaches validation perplexity 150.28, while the final completed run at
-step 8500 remains close at 152.73.
+remaining efficient in both memory and throughput. ALiBi and RoPE further
+improve results substantially when combined with GQA, with ALiBi giving the best
+observed validation perplexity. The best logged GQA + ALiBi checkpoint occurs at
+step 7000, where the model reaches validation perplexity 146.24, while the final
+completed run at step 8500 remains close at 147.87. The best GQA + RoPE
+checkpoint reaches validation perplexity 150.28, making it a strong second-best
+positional encoding result.
 
 The main lesson from the ablation study is that long-context modeling quality in
 this setup depends strongly on choosing the right attention and positional
