@@ -70,6 +70,8 @@ python -m core_ml.train --set model.block_type=gated_conv
 - `results/core_ml/gqa_rope_full_rerun/`: full logged GQA + RoPE rerun metrics.
 - `results/core_ml/gqa_alibi_512/`: GQA + ALiBi 512-token training result and
   512/1024/2048 extrapolation evaluation.
+- `results/core_ml/gqa_rope_512/`: matching GQA + RoPE 512-token extrapolation
+  run, included as the direct positional generalization comparison.
 - `results/core_ml/benchmarks/latency_gqa_alibi.json`: inference latency scaling
   for the final selected GQA + ALiBi configuration.
 

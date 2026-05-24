@@ -135,32 +135,60 @@
       "train_peak_memory_mb": 6832.472656
     }
   ],
-  "length_extrapolation": {
-    "name": "gqa_alibi_512",
-    "train_context": 512,
-    "best_step": 5500,
-    "best_validation_loss": 5.011684023134517,
-    "best_validation_perplexity": 150.15739187202712,
-    "final_validation_perplexity": 152.2144304309708,
-    "final_test_perplexity": 161.45148211473423,
-    "evaluations": [
-      {
-        "eval_context": 512,
-        "validation_loss": 5.0252902816208485,
-        "validation_perplexity": 152.2144347530723
-      },
-      {
-        "eval_context": 1024,
-        "validation_loss": 5.003280525835454,
-        "validation_perplexity": 148.90083177938672
-      },
-      {
-        "eval_context": 2048,
-        "validation_loss": 4.99559391431572,
-        "validation_perplexity": 147.76067650958765
-      }
-    ]
-  },
+  "length_extrapolation": [
+    {
+      "name": "gqa_alibi_512",
+      "train_context": 512,
+      "best_step": 5500,
+      "best_validation_loss": 5.011684023134517,
+      "best_validation_perplexity": 150.15739187202712,
+      "final_validation_perplexity": 152.2144304309708,
+      "final_test_perplexity": 161.45148211473423,
+      "evaluations": [
+        {
+          "eval_context": 512,
+          "validation_loss": 5.0252902816208485,
+          "validation_perplexity": 152.2144347530723
+        },
+        {
+          "eval_context": 1024,
+          "validation_loss": 5.003280525835454,
+          "validation_perplexity": 148.90083177938672
+        },
+        {
+          "eval_context": 2048,
+          "validation_loss": 4.99559391431572,
+          "validation_perplexity": 147.76067650958765
+        }
+      ]
+    },
+    {
+      "name": "gqa_rope_512",
+      "train_context": 512,
+      "best_step": 4500,
+      "best_validation_loss": 5.023132938134352,
+      "best_validation_perplexity": 151.8864098920782,
+      "final_validation_perplexity": 159.19769734118648,
+      "final_test_perplexity": 168.72553073413283,
+      "evaluations": [
+        {
+          "eval_context": 512,
+          "validation_loss": 5.070146862241522,
+          "validation_perplexity": 159.1977057584647
+        },
+        {
+          "eval_context": 1024,
+          "validation_loss": 5.242437399954462,
+          "validation_perplexity": 189.13052779714624
+        },
+        {
+          "eval_context": 2048,
+          "validation_loss": 5.635630347511985,
+          "validation_perplexity": 280.2355074028519
+        }
+      ]
+    }
+  ],
   "latency_benchmarks": [
     {
       "name": "gqa_alibi",

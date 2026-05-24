@@ -131,32 +131,37 @@ than the more structured extrapolation-friendly encodings in this setting.
 
 \subsection{Length Extrapolation}
 
-To directly test whether the strongest positional encoding generalizes beyond
-its training context, I trained GQA + ALiBi with sequence length 512 and
-evaluated the final checkpoint at longer validation contexts.
+To directly test whether the strongest positional encodings generalize beyond
+their training context, I trained GQA + ALiBi and GQA + RoPE with sequence
+length 512 and evaluated their final checkpoints at longer validation contexts.
 
 \begin{table}[h]
 \centering
-\begin{tabular}{lrrrr}
+\begin{tabular}{llrrr}
 \toprule
-Train Context & Eval Context & Val Loss & Val PPL & Eval Time (s) \\
+Method & Eval Context & Val Loss & Val PPL & Eval Time (s) \\
 \midrule
-512 & 512 & 5.0253 & 152.21 & 8.17 \\
-512 & 1024 & 5.0033 & 148.90 & 9.91 \\
-512 & 2048 & 4.9956 & 147.76 & 13.29 \\
+ALiBi & 512 & 5.0253 & 152.21 & 8.17 \\
+ALiBi & 1024 & 5.0033 & 148.90 & 9.91 \\
+ALiBi & 2048 & 4.9956 & 147.76 & 13.29 \\
+RoPE & 512 & 5.0701 & 159.20 & 8.13 \\
+RoPE & 1024 & 5.2424 & 189.13 & 9.39 \\
+RoPE & 2048 & 5.6356 & 280.24 & 11.86 \\
 \bottomrule
 \end{tabular}
-\caption{Length extrapolation for GQA + ALiBi trained at context length 512.}
+\caption{Length extrapolation for GQA models trained at context length 512.}
 \end{table}
 
-The extrapolation result is strong: validation perplexity remains stable when
-the evaluation context is extended beyond the training length, and in this run
-it slightly improves from 152.21 at 512 tokens to 147.76 at 2048 tokens. This
-is consistent with ALiBi's design, since the positional bias is computed as a
-distance-dependent attention bias rather than read from an absolute position
-table tied to the training context. The result supports using GQA + ALiBi as the
-final Core ML architecture, especially when length extrapolation is part of the
-evaluation criterion.
+The extrapolation result strongly favors ALiBi. Its validation perplexity
+remains stable when the evaluation context is extended beyond the training
+length, slightly improving from 152.21 at 512 tokens to 147.76 at 2048 tokens.
+RoPE is competitive at the training context, reaching 159.20 perplexity at 512
+tokens, but degrades to 189.13 at 1024 tokens and 280.24 at 2048 tokens. This is
+consistent with ALiBi's design: the positional signal is computed as a
+distance-dependent attention bias rather than relying on absolute rotary phases
+that may not extrapolate as smoothly without additional scaling. The result
+supports using GQA + ALiBi as the final Core ML architecture, especially when
+length extrapolation is part of the evaluation criterion.
 
 \subsection{Latency Benchmark}
 
@@ -257,10 +262,11 @@ and for later hybrid convolution experiments.
 The explicit extrapolation experiment strengthens this conclusion. A GQA +
 ALiBi model trained at context length 512 remains stable when evaluated at 1024
 and 2048 tokens, reaching validation perplexity 147.76 at the longest tested
-context. This is an important result because it separates in-context validation
-quality from length generalization: ALiBi is not merely the best positional
-encoding at the training length, but also the most convincing choice for
-extrapolating beyond it.
+context. In contrast, a matching GQA + RoPE model trained at 512 tokens degrades
+from 159.20 perplexity at 512 tokens to 280.24 at 2048 tokens. This separates
+in-context validation quality from length generalization: ALiBi is not merely
+the best positional encoding at the training length, but also the most
+convincing choice for extrapolating beyond it.
 
 The convolution-hybrid experiments do not overturn this hierarchy. Gated
 convolution nearly matches the standard block's validation perplexity, but its

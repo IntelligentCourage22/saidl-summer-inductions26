@@ -1,0 +1,15 @@
+{
+  "validation": {
+    "loss": 5.070146809368408,
+    "perplexity": 159.19769734118648,
+    "throughput_tps": 25913.933134453066,
+    "peak_memory_mb": 3162.7275390625
+  },
+  "test": {
+    "loss": 5.128273316181689,
+    "perplexity": 168.72553073413283,
+    "throughput_tps": 25831.499952693463,
+    "peak_memory_mb": 3162.7275390625
+  },
+  "step": 8850
+}

@@ -1,0 +1,26 @@
+{
+  "checkpoint": "checkpoints/core_ml_gqa_rope_512/final.pt",
+  "positional_encoding": "rope",
+  "attention_type": "gqa",
+  "train_seq_len": 512,
+  "evaluations": [
+    {
+      "loss": 5.070146862241522,
+      "perplexity": 159.1977057584647,
+      "seq_len": 512,
+      "eval_time_sec": 8.13
+    },
+    {
+      "loss": 5.242437399954462,
+      "perplexity": 189.13052779714624,
+      "seq_len": 1024,
+      "eval_time_sec": 9.39
+    },
+    {
+      "loss": 5.635630347511985,
+      "perplexity": 280.2355074028519,
+      "seq_len": 2048,
+      "eval_time_sec": 11.86
+    }
+  ]
+}
