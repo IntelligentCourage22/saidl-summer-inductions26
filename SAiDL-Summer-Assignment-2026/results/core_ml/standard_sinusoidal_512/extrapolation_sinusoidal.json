@@ -1,0 +1,26 @@
+{
+  "checkpoint": "checkpoints/core_ml_standard_sinusoidal_512/final.pt",
+  "positional_encoding": "sinusoidal",
+  "attention_type": "standard",
+  "train_seq_len": 512,
+  "evaluations": [
+    {
+      "loss": 5.703919326500237,
+      "perplexity": 300.0410583626029,
+      "seq_len": 512,
+      "eval_time_sec": 7.95
+    },
+    {
+      "loss": 6.247712804456797,
+      "perplexity": 516.8293819428108,
+      "seq_len": 1024,
+      "eval_time_sec": 9.1
+    },
+    {
+      "loss": 7.156128378939037,
+      "perplexity": 1281.9381340424893,
+      "seq_len": 2048,
+      "eval_time_sec": 11.16
+    }
+  ]
+}
