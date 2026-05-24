@@ -183,6 +183,12 @@ assignment environment. Peak allocated memory stays below 1 GB during the
 forward-only benchmark at batch size 2, which makes the selected configuration
 usable for long-context evaluation even under constrained compute.
 
+The latency benchmark is reported for the final selected architecture rather
+than for every attention variant. Comparative latency baselines for standard,
+linear, and sliding-window attention are left as a low-cost extension. This
+choice prioritizes validating the selected model's long-context behavior and
+keeps the final report focused on the strongest configuration.
+
 \section{Convolution-Attention Hybrids}
 
 Two hybrid designs are implemented: a depthwise convolution branch before each
@@ -221,7 +227,9 @@ augmentation whereas naive pre-attention convolution is not.
 The first major conclusion from the experiments is that not all efficient
 attention variants are equally useful in this setting. Sliding-window attention
 did not improve either quality or efficiency enough to justify its use at the
-tested budget. Linear attention improved validation perplexity slightly over the
+tested budget. The implementation uses a full attention matrix with a local
+mask, so it should be interpreted as a locality ablation rather than a truly
+memory-efficient sparse attention kernel. Linear attention improved validation perplexity slightly over the
 standard baseline but required substantially more training memory and reduced
 throughput, which weakens its appeal as a practical replacement.
 
@@ -292,5 +300,8 @@ The compact experiment artifacts used in this report are versioned under
 training-log tails, extrapolation outputs, latency benchmarks, and an aggregate
 \texttt{experiment\_summary.json}. Large checkpoints and raw W\&B/output
 directories are intentionally excluded from git to keep the repository small.
+The training script also supports mixed precision and gradient accumulation for
+future reruns, but the reported experiments use the settings stored in their
+logged configs and result artifacts.
 
 \end{document}

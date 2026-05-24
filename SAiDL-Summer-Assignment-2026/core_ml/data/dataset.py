@@ -12,10 +12,11 @@ class WikiTextDataset(Dataset):
         dataset_name="wikitext",
         dataset_config="wikitext-2-raw-v1",
         tokenizer_name="gpt2",
+        tokenizer=None,
     ):
         self.seq_len = seq_len
 
-        self.tokenizer = AutoTokenizer.from_pretrained(tokenizer_name)
+        self.tokenizer = tokenizer or AutoTokenizer.from_pretrained(tokenizer_name)
         if self.tokenizer.pad_token is None:
             self.tokenizer.pad_token = self.tokenizer.eos_token
 
@@ -49,11 +50,16 @@ def get_dataloaders(
     dataset_config="wikitext-2-raw-v1",
     tokenizer_name="gpt2",
 ):
+    tokenizer = AutoTokenizer.from_pretrained(tokenizer_name)
+    if tokenizer.pad_token is None:
+        tokenizer.pad_token = tokenizer.eos_token
+
     kwargs = {
         "seq_len": seq_len,
         "dataset_name": dataset_name,
         "dataset_config": dataset_config,
         "tokenizer_name": tokenizer_name,
+        "tokenizer": tokenizer,
     }
     train_ds = WikiTextDataset("train", **kwargs)
     val_ds = WikiTextDataset("validation", **kwargs)

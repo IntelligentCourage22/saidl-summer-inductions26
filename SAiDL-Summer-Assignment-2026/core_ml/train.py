@@ -150,11 +150,16 @@ def main():
     optimizer = torch.optim.AdamW(
         model.parameters(), lr=float(cfg.training.learning_rate), betas=(0.9, 0.95)
     )
-    total_steps = cfg.training.max_steps or (cfg.training.num_epochs * len(train_loader))
+    grad_accum_steps = max(1, int(getattr(cfg.training, "grad_accum_steps", 1)))
+    steps_per_epoch = math.ceil(len(train_loader) / grad_accum_steps)
+    total_steps = cfg.training.max_steps or (cfg.training.num_epochs * steps_per_epoch)
     scheduler = build_scheduler(optimizer, int(cfg.training.warmup_steps), total_steps)
+    use_amp = bool(getattr(cfg.training, "use_amp", False)) and device.type == "cuda"
+    scaler = torch.cuda.amp.GradScaler(enabled=use_amp)
     run = maybe_init_wandb(config)
 
     global_step = 0
+    micro_step = 0
     train_tracker = MetricsTracker()
     start_time = time.time()
     metrics_path = output_dir / "metrics.jsonl"
@@ -163,21 +168,35 @@ def main():
         for epoch in range(cfg.training.num_epochs):
             epoch_start = time.time()
             model.train()
-            for x, y in train_loader:
+            optimizer.zero_grad(set_to_none=True)
+            for batch_idx, (x, y) in enumerate(train_loader):
                 x = x.to(device, non_blocking=True)
                 y = y.to(device, non_blocking=True)
 
-                optimizer.zero_grad(set_to_none=True)
-                _, loss = model(x, y)
+                with torch.cuda.amp.autocast(enabled=use_amp):
+                    _, loss = model(x, y)
                 if loss.dim() > 0: loss = loss.mean()
-                loss.backward()
+                raw_loss = loss.detach()
+                scaler.scale(loss / grad_accum_steps).backward()
+                micro_step += 1
+                train_tracker.update(raw_loss.item(), x.numel())
+
+                is_accum_boundary = micro_step % grad_accum_steps == 0
+                is_last_batch = batch_idx == len(train_loader) - 1
+                if not (is_accum_boundary or is_last_batch):
+                    continue
+
+                scaler.unscale_(optimizer)
                 grad_norm = compute_grad_norm(model)
-                torch.nn.utils.clip_grad_norm_(model.parameters(), cfg.training.grad_clip)
-                optimizer.step()
+                torch.nn.utils.clip_grad_norm_(
+                    model.parameters(), cfg.training.grad_clip
+                )
+                scaler.step(optimizer)
+                scaler.update()
                 scheduler.step()
+                optimizer.zero_grad(set_to_none=True)
 
                 global_step += 1
-                train_tracker.update(loss.item(), x.numel())
 
                 if global_step % cfg.training.eval_every == 0:
                     train_summary = train_tracker.get_summary()
@@ -191,6 +210,8 @@ def main():
                         "grad_norm": grad_norm,
                         "lr": scheduler.get_last_lr()[0],
                         "elapsed_sec": time.time() - start_time,
+                        "grad_accum_steps": grad_accum_steps,
+                        "use_amp": use_amp,
                         "train": train_summary,
                         "validation": val_summary,
                         "model": {

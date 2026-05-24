@@ -15,7 +15,14 @@ Diffusion domain task: a compute-aware latent DiT baseline plus RACD scaffolding
   `interleaved`, and `gated_conv`.
 - Training script logs JSONL metrics for loss, perplexity, throughput, and peak
   GPU memory.
-- LaTeX report scaffold lives in `reports/core_ml_report.tex`.
+- Training supports optional AMP (`training.use_amp`) and gradient accumulation
+  (`training.grad_accum_steps`) for compute-constrained GPU runs.
+- Extrapolation evaluation resizes fixed positional caches before long-context
+  validation, so RoPE/sinusoidal models can be evaluated beyond their training
+  context safely.
+- Small result artifacts are committed under `results/core_ml/`; large
+  checkpoints and raw W&B folders are intentionally excluded.
+- Final Core ML report lives in `reports/core_ml_report.tex`.
 
 ## Setup
 
@@ -55,6 +62,21 @@ python -m core_ml.train --set model.block_type=gated_conv
    `gated_conv`.
 5. Copy the final metrics into the LaTeX tables and include short analysis of
    stability, memory, and throughput tradeoffs.
+
+## Final Core ML Evidence In Repo
+
+- `results/core_ml/experiment_summary.json`: aggregate result table used by the
+  report.
+- `results/core_ml/gqa_rope_full_rerun/`: full logged GQA + RoPE rerun metrics.
+- `results/core_ml/gqa_alibi_512/`: GQA + ALiBi 512-token training result and
+  512/1024/2048 extrapolation evaluation.
+- `results/core_ml/benchmarks/latency_gqa_alibi.json`: inference latency scaling
+  for the final selected GQA + ALiBi configuration.
+
+The remaining optional extensions are comparative latency baselines for every
+attention type and a full 512/1024/2048/4096 retraining matrix. The submitted
+results cover the main ablations, positional extrapolation, hybrid blocks, and
+the selected model's latency scaling.
 
 ## Diffusion Task
 

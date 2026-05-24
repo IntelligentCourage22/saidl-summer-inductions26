@@ -1,3 +1,5 @@
+import math
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -187,6 +189,9 @@ class TransformerLM(nn.Module):
         pe_type = cfg_get(model_cfg, "positional_encoding")
 
         self.max_seq_len = max_seq_len
+        self.embedding_scale = (
+            math.sqrt(d_model) if cfg_get(model_cfg, "scale_embeddings", False) else 1.0
+        )
         self.token_emb = nn.Embedding(vocab_size, d_model)
         self.pos_enc = build_positional_encoding(pe_type, d_model, max_seq_len, dropout)
         self.blocks = nn.ModuleList(
@@ -214,7 +219,7 @@ class TransformerLM(nn.Module):
                 f"Sequence length {seq_len} exceeds max_seq_len={self.max_seq_len}."
             )
 
-        x = self.token_emb(x)
+        x = self.token_emb(x) * self.embedding_scale
         x = self.pos_enc(x)
 
         mask = torch.triu(torch.ones(seq_len, seq_len, device=x.device), diagonal=1)
