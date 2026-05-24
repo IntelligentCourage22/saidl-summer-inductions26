@@ -18,6 +18,23 @@ This report studies long-context sequence modeling on WikiText-2 using a modular
 Transformer language model. The codebase allows independent swaps of attention
 mechanisms, positional encodings, and convolution-attention hybrid blocks.
 
+\begin{table}[h]
+\centering
+\begin{tabular}{lp{0.62\linewidth}}
+\toprule
+Assignment Component & Coverage \\
+\midrule
+Baseline Transformer & Standard causal Transformer trained at context length 1024. \\
+Attention variants & Standard, sliding-window/local, linear kernelized, MQA, and GQA are implemented; standard, sliding-window, linear, and GQA are evaluated at 1024 tokens. \\
+Positional encodings & Sinusoidal, RoPE, ALiBi, and learned relative position bias are implemented and evaluated. \\
+Extrapolation & Sinusoidal, RoPE, ALiBi, and relative-bias models trained at 512 tokens and evaluated at 512, 1024, and 2048 tokens. \\
+Hybrid blocks & Conv-before-attention, interleaved convolution, and gated-convolution FFN are implemented; conv-before and gated-conv are evaluated with the best GQA + ALiBi configuration. \\
+Logging & JSONL/W\&B logging, validation perplexity, throughput, peak memory, epoch timing, gradient norm, and final metric artifacts are included. \\
+\bottomrule
+\end{tabular}
+\caption{Core ML requirement coverage.}
+\end{table}
+
 \section{Baseline}
 
 \subsection{Architecture}
@@ -93,8 +110,8 @@ treated as a preliminary comparison rather than a final conclusion.
 The implemented positional choices are sinusoidal positional encodings, rotary
 positional embeddings, ALiBi, and learned relative position bias. In addition
 to the main 1024-token context experiments, I evaluate length extrapolation by
-training the best positional configuration at $L_{\mathrm{train}}=512$ and
-evaluating it at $L_{\mathrm{test}}\in\{512,1024,2048\}$.
+training the positional variants at $L_{\mathrm{train}}=512$ and evaluating them
+at $L_{\mathrm{test}}\in\{512,1024,2048\}$.
 
 \begin{table}[h]
 \centering
@@ -310,9 +327,10 @@ more memory-intensive, while the conv-before-attention design performs worse.
 The main lesson from the ablation study is that long-context modeling quality in
 this setup depends strongly on choosing the right attention and positional
 components rather than only scaling the baseline Transformer. Future work in the
-same codebase should add more baseline latency comparisons and, if compute
-allows, repeat the 512-to-2048 extrapolation test for RoPE. The current results
-already support GQA + ALiBi as the final Core ML submission model.
+same codebase should add comparative latency baselines for every attention type
+and a fuller multi-context retraining matrix, especially at 4096 tokens if
+compute allows. The current results already support GQA + ALiBi as the final
+Core ML submission model.
 
 \section{Reproducibility Artifacts}
 
