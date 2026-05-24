@@ -1,0 +1,26 @@
+{
+  "checkpoint": "checkpoints/core_ml_gqa_relative_512/final.pt",
+  "positional_encoding": "relative",
+  "attention_type": "gqa",
+  "train_seq_len": 512,
+  "evaluations": [
+    {
+      "loss": 5.287558810177281,
+      "perplexity": 197.85982198191698,
+      "seq_len": 512,
+      "eval_time_sec": 9.29
+    },
+    {
+      "loss": 5.371902300987714,
+      "perplexity": 215.27199056382625,
+      "seq_len": 1024,
+      "eval_time_sec": 12.04
+    },
+    {
+      "loss": 5.534850885060208,
+      "perplexity": 253.37000356724735,
+      "seq_len": 2048,
+      "eval_time_sec": 17.9
+    }
+  ]
+}

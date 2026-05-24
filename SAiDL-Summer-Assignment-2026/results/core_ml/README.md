@@ -12,6 +12,9 @@ folders are intentionally excluded from git.
   and 512-to-2048 length extrapolation results for GQA + ALiBi.
 - `gqa_rope_512/`: Final metrics, best metric snapshot, available metric tail,
   and 512-to-2048 length extrapolation results for GQA + RoPE.
+- `gqa_relative_512/`: Final metrics, best metric snapshot, available metric
+  tail, and 512-to-2048 length extrapolation results for GQA + learned relative
+  position bias.
 - `standard_sinusoidal_512/`: Standard Transformer + sinusoidal baseline at
   context length 512 and its 512-to-2048 extrapolation results.
 - `benchmarks/latency_gqa_alibi.json`: Inference latency benchmark for GQA +
@@ -19,6 +22,5 @@ folders are intentionally excluded from git.
 - `experiment_summary.json`: Compact aggregate table containing the values used
   across the Core ML report.
 
-The `metrics_tail.jsonl` files for `gqa_alibi_512`, `gqa_rope_512`, and
-`standard_sinusoidal_512` contain the available pasted tail rows from the
-Colab/W&B runs rather than complete raw training logs.
+The `metrics_tail.jsonl` files for the 512-context runs contain the available
+pasted tail rows from the Colab/W&B runs rather than complete raw training logs.

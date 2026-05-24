@@ -213,6 +213,32 @@
           "validation_perplexity": 1281.9381340424893
         }
       ]
+    },
+    {
+      "name": "gqa_relative_512",
+      "train_context": 512,
+      "best_step": 6500,
+      "best_validation_loss": 5.2729626495001005,
+      "best_validation_perplexity": 194.99280286540954,
+      "final_validation_perplexity": 197.85982140072448,
+      "final_test_perplexity": 208.9792308289192,
+      "evaluations": [
+        {
+          "eval_context": 512,
+          "validation_loss": 5.287558810177281,
+          "validation_perplexity": 197.85982198191698
+        },
+        {
+          "eval_context": 1024,
+          "validation_loss": 5.371902300987714,
+          "validation_perplexity": 215.27199056382625
+        },
+        {
+          "eval_context": 2048,
+          "validation_loss": 5.534850885060208,
+          "validation_perplexity": 253.37000356724735
+        }
+      ]
     }
   ],
   "latency_benchmarks": [

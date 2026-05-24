@@ -1,0 +1,27 @@
+{
+  "step": 6500,
+  "epoch": 11,
+  "epoch_time_sec": 12.455584526062012,
+  "grad_norm": 1.915909459802566,
+  "lr": 0.00005139713425873171,
+  "elapsed_sec": 1562.6306455135345,
+  "grad_accum_steps": 1,
+  "use_amp": true,
+  "train": {
+    "loss": 3.970313003267152,
+    "perplexity": 53.001117766683244,
+    "throughput_tps": 18499.408066715674,
+    "peak_memory_mb": 4189.80029296875
+  },
+  "validation": {
+    "loss": 5.2729626495001005,
+    "perplexity": 194.99280286540954,
+    "throughput_tps": 24425.773340914533,
+    "peak_memory_mb": 3260.7138671875
+  },
+  "model": {
+    "attention_type": "gqa",
+    "positional_encoding": "relative",
+    "block_type": "standard"
+  }
+}

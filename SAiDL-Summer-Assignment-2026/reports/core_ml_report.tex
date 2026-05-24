@@ -134,8 +134,8 @@ than the more structured extrapolation-friendly encodings in this setting.
 To directly test whether the positional encodings generalize beyond their
 training context, I trained models with sequence length 512 and evaluated their
 final checkpoints at longer validation contexts. The standard Transformer with
-sinusoidal encoding is included as the absolute-position baseline, while GQA +
-RoPE and GQA + ALiBi compare the two strongest long-context encodings.
+sinusoidal encoding is included as the absolute-position baseline, and the GQA
+runs compare RoPE, ALiBi, and learned relative position bias.
 
 \begin{table}[h]
 \centering
@@ -152,6 +152,9 @@ ALiBi & 2048 & 4.9956 & 147.76 & 13.29 \\
 RoPE & 512 & 5.0701 & 159.20 & 8.13 \\
 RoPE & 1024 & 5.2424 & 189.13 & 9.39 \\
 RoPE & 2048 & 5.6356 & 280.24 & 11.86 \\
+Relative & 512 & 5.2876 & 197.86 & 9.29 \\
+Relative & 1024 & 5.3719 & 215.27 & 12.04 \\
+Relative & 2048 & 5.5349 & 253.37 & 17.90 \\
 \bottomrule
 \end{tabular}
 \caption{Length extrapolation for models trained at context length 512.}
@@ -161,14 +164,17 @@ The extrapolation result strongly favors ALiBi. Its validation perplexity
 remains stable when the evaluation context is extended beyond the training
 length, slightly improving from 152.21 at 512 tokens to 147.76 at 2048 tokens.
 RoPE is competitive at the training context, reaching 159.20 perplexity at 512
-tokens, but degrades to 189.13 at 1024 tokens and 280.24 at 2048 tokens. This is
-still much better than the standard sinusoidal baseline, which collapses from
-300.04 perplexity at 512 tokens to 1281.94 at 2048 tokens. This is consistent
-with ALiBi's design: the positional signal is computed as a distance-dependent
-attention bias rather than relying on absolute position values or rotary phases
-that may not extrapolate as smoothly without additional scaling. The result
-supports using GQA + ALiBi as the final Core ML architecture, especially when
-length extrapolation is part of the evaluation criterion.
+tokens, but degrades to 189.13 at 1024 tokens and 280.24 at 2048 tokens. Learned
+relative bias sits between ALiBi and RoPE at the longest context, reaching
+253.37 perplexity at 2048 tokens, but is worse than both at the training length.
+All three long-context encodings are substantially better than the standard
+sinusoidal baseline, which collapses from 300.04 perplexity at 512 tokens to
+1281.94 at 2048 tokens. This is consistent with ALiBi's design: the positional
+signal is computed as a distance-dependent attention bias rather than relying on
+absolute position values, learned distance tables, or rotary phases that may not
+extrapolate as smoothly without additional scaling. The result supports using
+GQA + ALiBi as the final Core ML architecture, especially when length
+extrapolation is part of the evaluation criterion.
 
 \subsection{Latency Benchmark}
 
@@ -270,11 +276,12 @@ The explicit extrapolation experiment strengthens this conclusion. A GQA +
 ALiBi model trained at context length 512 remains stable when evaluated at 1024
 and 2048 tokens, reaching validation perplexity 147.76 at the longest tested
 context. In contrast, a matching GQA + RoPE model trained at 512 tokens degrades
-from 159.20 perplexity at 512 tokens to 280.24 at 2048 tokens, while the
-standard sinusoidal baseline degrades much more severely from 300.04 to 1281.94.
-This separates in-context validation quality from length generalization: ALiBi
-is not merely the best positional encoding at the training length, but also the
-most convincing choice for extrapolating beyond it.
+from 159.20 perplexity at 512 tokens to 280.24 at 2048 tokens, learned relative
+bias reaches 253.37 at 2048 tokens, and the standard sinusoidal baseline
+degrades much more severely from 300.04 to 1281.94. This separates in-context
+validation quality from length generalization: ALiBi is not merely the best
+positional encoding at the training length, but also the most convincing choice
+for extrapolating beyond it.
 
 The convolution-hybrid experiments do not overturn this hierarchy. Gated
 convolution nearly matches the standard block's validation perplexity, but its
