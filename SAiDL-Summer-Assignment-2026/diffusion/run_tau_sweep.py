@@ -30,6 +30,7 @@ def parse_args():
     parser.add_argument("--batch-size", type=int, default=None)
     parser.add_argument("--eval-batch-size", type=int, default=16)
     parser.add_argument("--reuse-samples", action="store_true")
+    parser.add_argument("--no-ema", action="store_true")
     parser.add_argument("--skip-fid", action="store_true")
     parser.add_argument("--skip-cmmd", action="store_true")
     return parser.parse_args()
@@ -73,6 +74,8 @@ def run_sampling(args, mode, generated_dir, tau=None):
         "--set",
         f"sampling.output_dir={sample_root.as_posix()}",
     ]
+    if args.no_ema:
+        command.append("--no-ema")
     if args.num_images is not None:
         command.extend(["--set", f"sampling.num_images={args.num_images}"])
     if args.batch_size is not None:

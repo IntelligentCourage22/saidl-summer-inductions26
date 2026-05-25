@@ -21,6 +21,7 @@ from utils import EMAModel, ensure_dir, load_config, set_seed, torch_load
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("--checkpoint", required=True)
+    parser.add_argument("--no-ema", action="store_true")
     parser.add_argument("--config", default=os.path.join(sys_path, "configs", "dit_landscape.yaml"))
     parser.add_argument("--set", action="append", default=[])
     return parser.parse_args()
@@ -60,7 +61,7 @@ def main():
     checkpoint = torch_load(args.checkpoint, map_location=device)
     model = LatentDiT(**checkpoint.get("config", config)["model"]).to(device)
     model.load_state_dict(checkpoint["model"])
-    if checkpoint.get("model_ema") is not None:
+    if checkpoint.get("model_ema") is not None and not args.no_ema:
         ema = EMAModel(model)
         ema.load_state_dict(checkpoint["model_ema"])
         ema.copy_to(model)
