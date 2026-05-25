@@ -150,3 +150,35 @@ def test_gqa_invalid_heads_raises():
     cfg.model.n_kv_heads = 3  # 4 % 3 != 0
     with pytest.raises(AssertionError):
         TransformerLM(cfg)
+
+
+def test_linear_attention_rejects_incompatible_positional_encodings():
+    for positional_encoding in ["rope", "alibi", "relative"]:
+        cfg = make_cfg(
+            attention_type="linear",
+            positional_encoding=positional_encoding,
+        )
+        with pytest.raises(NotImplementedError):
+            TransformerLM(cfg)
+
+
+def test_position_resize_keeps_buffers_registered():
+    model = TransformerLM(make_cfg(positional_encoding="rope"))
+    model.resize_position_buffers(64)
+    rotary = model.blocks[0].attn.rotary
+    assert "cos" in rotary._buffers
+    assert "sin" in rotary._buffers
+    assert rotary.cos.size(-2) == 64
+
+    model = TransformerLM(make_cfg(positional_encoding="sinusoidal"))
+    model.resize_position_buffers(64)
+    assert "pe" in model.pos_enc._buffers
+    assert model.pos_enc.pe.size(1) == 64
+
+
+def test_alibi_slopes_match_paper_formula():
+    from models.positional.alibi import AlibiBias
+
+    slopes = AlibiBias._get_slopes(8)
+    expected = [2 ** (-(i + 1)) for i in range(8)]
+    assert slopes == pytest.approx(expected)

@@ -21,9 +21,7 @@ class AlibiBias(nn.Module):
     @staticmethod
     def _get_slopes(n_heads):
         def slopes_power_of_2(n):
-            start = 2 ** (-(2 ** -(torch.log2(torch.tensor(n)).item() - 3)))
-            ratio = start
-            return [start * ratio**i for i in range(n)]
+            return [2 ** (-8.0 * (i + 1) / n) for i in range(n)]
 
         if torch.log2(torch.tensor(n_heads)).item().is_integer():
             return slopes_power_of_2(n_heads)

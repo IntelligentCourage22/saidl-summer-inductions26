@@ -155,7 +155,8 @@ def main():
     total_steps = cfg.training.max_steps or (cfg.training.num_epochs * steps_per_epoch)
     scheduler = build_scheduler(optimizer, int(cfg.training.warmup_steps), total_steps)
     use_amp = bool(getattr(cfg.training, "use_amp", False)) and device.type == "cuda"
-    scaler = torch.cuda.amp.GradScaler(enabled=use_amp)
+    amp_device = device.type
+    scaler = torch.amp.GradScaler(amp_device, enabled=use_amp)
     run = maybe_init_wandb(config)
 
     global_step = 0
@@ -173,7 +174,7 @@ def main():
                 x = x.to(device, non_blocking=True)
                 y = y.to(device, non_blocking=True)
 
-                with torch.cuda.amp.autocast(enabled=use_amp):
+                with torch.amp.autocast(amp_device, enabled=use_amp):
                     _, loss = model(x, y)
                 if loss.dim() > 0: loss = loss.mean()
                 raw_loss = loss.detach()

@@ -2,8 +2,6 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from models.positional.rope import RotaryEmbedding
-
 
 class LinearAttention(nn.Module):
     """Causal kernelized linear attention with an ELU+1 feature map."""
@@ -19,6 +17,11 @@ class LinearAttention(nn.Module):
     ):
         super().__init__()
         assert d_model % n_heads == 0, "d_model must be divisible by n_heads"
+        if positional_encoding in {"rope", "alibi", "relative"}:
+            raise NotImplementedError(
+                "LinearAttention supports only sinusoidal or no positional encoding. "
+                f"Got positional_encoding={positional_encoding!r}."
+            )
 
         self.n_heads = n_heads
         self.d_head = d_model // n_heads
@@ -29,11 +32,7 @@ class LinearAttention(nn.Module):
         self.v_proj = nn.Linear(d_model, d_model)
         self.out_proj = nn.Linear(d_model, d_model)
         self.dropout = nn.Dropout(dropout)
-        self.rotary = (
-            RotaryEmbedding(self.d_head, max_seq_len)
-            if positional_encoding == "rope"
-            else None
-        )
+        self.rotary = None
 
     @staticmethod
     def kernel(x):

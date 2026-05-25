@@ -38,7 +38,7 @@ class SinusoidalPE(nn.Module):
 
         pe = self._build_pe(max_seq_len, self.d_model, self.pe.device)
         pe = pe.to(dtype=self.pe.dtype)
-        self.pe = pe.unsqueeze(0)
+        self.register_buffer("pe", pe.unsqueeze(0))
         self.max_seq_len = max_seq_len
 
     def forward(self, x):

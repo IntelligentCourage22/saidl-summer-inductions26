@@ -35,8 +35,8 @@ class RotaryEmbedding(nn.Module):
             return
 
         cos, sin = self._build_cache(max_seq_len, self.cos.device)
-        self.cos = cos
-        self.sin = sin
+        self.register_buffer("cos", cos, persistent=False)
+        self.register_buffer("sin", sin, persistent=False)
         self.max_seq_len = max_seq_len
 
     def forward(self, q, k):

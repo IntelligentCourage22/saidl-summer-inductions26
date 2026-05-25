@@ -51,7 +51,7 @@ def evaluate(model, loader, device, max_batches=None):
         total_tokens += x.numel()
 
     avg_loss = total_loss / max(total_tokens, 1)
-    perplexity = math.exp(avg_loss)
+    perplexity = math.exp(min(avg_loss, 100))
     return {"loss": avg_loss, "perplexity": perplexity, "total_tokens": total_tokens}
 
 
