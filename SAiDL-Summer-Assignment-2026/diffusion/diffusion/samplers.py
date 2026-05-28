@@ -104,6 +104,8 @@ def masked_cyclic_refine(model, diffusion, z0, t_start, mask, device, steps=None
             mask, size=z0.shape[-2:], mode="nearest"
         )
     mask = mask.to(device=device, dtype=z0.dtype).clamp(0, 1)
+    if torch.count_nonzero(mask) == 0:
+        return z0
 
     known_noise = torch.randn_like(z0)
     timesteps = _ddim_timesteps(diffusion, steps, device, start_timestep=t_start)
