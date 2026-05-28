@@ -5,101 +5,101 @@
       "tau": null,
       "fid": 184.5504624917056,
       "cmmd": 0.0010093450546264648,
-      "mean_time_sec_per_image": 0.16423280257731676,
+      "mean_time_sec_per_image": 0.1545987967401743,
       "mean_refinement_fraction": null,
-      "generated_dir": "results/diffusion/tau_sweep_s4/samples/baseline"
+      "generated_dir": "diffusion_s4_rerun_artifacts\\results\\diffusion\\tau_sweep_s4_rerun\\samples\\baseline"
     },
     {
       "method": "global_cyclic",
       "tau": null,
-      "fid": 183.3184813833524,
+      "fid": 183.31848143427146,
       "cmmd": 0.0009821653366088867,
-      "mean_time_sec_per_image": 0.19836676865816116,
+      "mean_time_sec_per_image": 0.19534648209810257,
       "mean_refinement_fraction": null,
-      "generated_dir": "results/diffusion/tau_sweep_s4/samples/global_cyclic"
+      "generated_dir": "diffusion_s4_rerun_artifacts\\results\\diffusion\\tau_sweep_s4_rerun\\samples\\global_cyclic"
     },
     {
       "method": "racd",
       "tau": 0.1,
-      "fid": 185.034214482981,
+      "fid": 185.0342147160788,
       "cmmd": 0.0009998083114624023,
-      "mean_time_sec_per_image": 0.20044652931392193,
+      "mean_time_sec_per_image": 0.19926297664642334,
       "mean_refinement_fraction": 0.683837890625,
-      "generated_dir": "results/diffusion/tau_sweep_s4/samples/racd_tau_0p1/racd"
+      "generated_dir": "diffusion_s4_rerun_artifacts\\results\\diffusion\\tau_sweep_s4_rerun\\samples\\racd_tau_0p1\\racd"
     },
     {
       "method": "racd",
       "tau": 0.2,
-      "fid": 184.1244803456206,
+      "fid": 184.12448058108336,
       "cmmd": 0.0009911060333251953,
-      "mean_time_sec_per_image": 0.19997016061097383,
+      "mean_time_sec_per_image": 0.199709115549922,
       "mean_refinement_fraction": 0.013385772705078125,
-      "generated_dir": "results/diffusion/tau_sweep_s4/samples/racd_tau_0p2/racd"
+      "generated_dir": "diffusion_s4_rerun_artifacts\\results\\diffusion\\tau_sweep_s4_rerun\\samples\\racd_tau_0p2\\racd"
     },
     {
       "method": "racd",
       "tau": 0.3,
-      "fid": 184.22452760948886,
-      "cmmd": 0.0009870529174804688,
-      "mean_time_sec_per_image": 0.20031989458948374,
-      "mean_refinement_fraction": 0.000514984130859375,
-      "generated_dir": "results/diffusion/tau_sweep_s4/samples/racd_tau_0p3/racd"
+      "fid": 188.2727234664983,
+      "cmmd": 0.0010063648223876953,
+      "mean_time_sec_per_image": 0.1931622251868248,
+      "mean_refinement_fraction": 0.000507354736328125,
+      "generated_dir": "diffusion_s4_rerun_artifacts\\results\\diffusion\\tau_sweep_s4_rerun\\samples\\racd_tau_0p3\\racd"
     },
     {
       "method": "racd",
       "tau": 0.4,
-      "fid": 184.23459090373584,
-      "cmmd": 0.0009856224060058594,
-      "mean_time_sec_per_image": 0.1989681636914611,
-      "mean_refinement_fraction": 5.340576171875e-05,
-      "generated_dir": "results/diffusion/tau_sweep_s4/samples/racd_tau_0p4/racd"
+      "fid": 186.61841192157235,
+      "cmmd": 0.001020193099975586,
+      "mean_time_sec_per_image": 0.1790412710979581,
+      "mean_refinement_fraction": 0.0001068115234375,
+      "generated_dir": "diffusion_s4_rerun_artifacts\\results\\diffusion\\tau_sweep_s4_rerun\\samples\\racd_tau_0p4\\racd"
     },
     {
       "method": "racd",
       "tau": 0.5,
-      "fid": 184.19648120615284,
-      "cmmd": 0.000985860824584961,
-      "mean_time_sec_per_image": 0.20058691035956144,
-      "mean_refinement_fraction": 0.0,
-      "generated_dir": "results/diffusion/tau_sweep_s4/samples/racd_tau_0p5/racd"
+      "fid": 184.7195185537904,
+      "cmmd": 0.0010160207748413086,
+      "mean_time_sec_per_image": 0.16640977188944817,
+      "mean_refinement_fraction": 3.814697265625e-06,
+      "generated_dir": "diffusion_s4_rerun_artifacts\\results\\diffusion\\tau_sweep_s4_rerun\\samples\\racd_tau_0p5\\racd"
     },
     {
       "method": "racd",
       "tau": 0.6,
-      "fid": 184.1964811502331,
-      "cmmd": 0.000985860824584961,
-      "mean_time_sec_per_image": 0.20143907610327005,
+      "fid": 184.5500943223352,
+      "cmmd": 0.0010094642639160156,
+      "mean_time_sec_per_image": 0.1650045895949006,
       "mean_refinement_fraction": 0.0,
-      "generated_dir": "results/diffusion/tau_sweep_s4/samples/racd_tau_0p6/racd"
+      "generated_dir": "diffusion_s4_rerun_artifacts\\results\\diffusion\\tau_sweep_s4_rerun\\samples\\racd_tau_0p6\\racd"
     },
     {
       "method": "racd",
       "tau": 0.7,
-      "fid": 184.19648108812703,
-      "cmmd": 0.000985860824584961,
-      "mean_time_sec_per_image": 0.20036491006612778,
+      "fid": 184.5500943223352,
+      "cmmd": 0.0010094642639160156,
+      "mean_time_sec_per_image": 0.1655917325988412,
       "mean_refinement_fraction": 0.0,
-      "generated_dir": "results/diffusion/tau_sweep_s4/samples/racd_tau_0p7/racd"
+      "generated_dir": "diffusion_s4_rerun_artifacts\\results\\diffusion\\tau_sweep_s4_rerun\\samples\\racd_tau_0p7\\racd"
     },
     {
       "method": "racd",
       "tau": 0.8,
-      "fid": 184.19648120615284,
-      "cmmd": 0.000985860824584961,
-      "mean_time_sec_per_image": 0.1999621307477355,
+      "fid": 184.5500941984011,
+      "cmmd": 0.0010094642639160156,
+      "mean_time_sec_per_image": 0.1654411293566227,
       "mean_refinement_fraction": 0.0,
-      "generated_dir": "results/diffusion/tau_sweep_s4/samples/racd_tau_0p8/racd"
+      "generated_dir": "diffusion_s4_rerun_artifacts\\results\\diffusion\\tau_sweep_s4_rerun\\samples\\racd_tau_0p8\\racd"
     },
     {
       "method": "racd",
       "tau": 0.9,
-      "fid": 184.19648120615284,
-      "cmmd": 0.000985860824584961,
-      "mean_time_sec_per_image": 0.20009914506226778,
+      "fid": 184.55009410903358,
+      "cmmd": 0.0010094642639160156,
+      "mean_time_sec_per_image": 0.1658144472166896,
       "mean_refinement_fraction": 0.0,
-      "generated_dir": "results/diffusion/tau_sweep_s4/samples/racd_tau_0p9/racd"
+      "generated_dir": "diffusion_s4_rerun_artifacts\\results\\diffusion\\tau_sweep_s4_rerun\\samples\\racd_tau_0p9\\racd"
     }
   ],
-  "optimal_tau": 0.4,
-  "selection_rule": "minimum normalized CMMD plus normalized generation time among RACD thresholds"
+  "optimal_tau": 0.2,
+  "selection_rule": "lowest CMMD among RACD thresholds that refine at least 0.1% of latent locations and improve baseline CMMD; falls back to normalized CMMD plus time if none qualify"
 }

@@ -150,11 +150,27 @@ def write_csv(path, records):
 
 
 def choose_optimal_tau(records):
+    baseline_cmmd = next(
+        (
+            record.get("cmmd")
+            for record in records
+            if record["method"] == "baseline" and record.get("cmmd") is not None
+        ),
+        None,
+    )
     racd = [
         record
         for record in records
         if record["method"] == "racd" and record.get("cmmd") is not None
     ]
+    meaningful = [
+        record
+        for record in racd
+        if record.get("mean_refinement_fraction", 0.0) >= 1e-3
+        and (baseline_cmmd is None or record["cmmd"] < baseline_cmmd)
+    ]
+    if meaningful:
+        return min(meaningful, key=lambda record: record["cmmd"])
     if not racd:
         return None
 
@@ -250,7 +266,7 @@ def main():
     result = {
         "records": records,
         "optimal_tau": optimal["tau"] if optimal is not None else None,
-        "selection_rule": "minimum normalized CMMD plus normalized generation time among RACD thresholds",
+        "selection_rule": "lowest CMMD among RACD thresholds that refine at least 0.1% of latent locations and improve baseline CMMD; falls back to normalized CMMD plus time if none qualify",
     }
 
     with open(output_dir / "tau_sweep_results.json", "w", encoding="utf-8") as handle:

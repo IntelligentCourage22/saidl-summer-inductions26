@@ -150,9 +150,9 @@ Pareto frontier rather than relying only on the scalar score.
 \toprule
 Method & FID $\downarrow$ & CMMD $\downarrow$ & Time (s/img) & Refined Fraction \\
 \midrule
-Baseline DiT-S/4 & 184.55 & 0.0010093 & 0.1642 & 0.00 \\
-Global Cyclic & 183.32 & 0.0009822 & 0.1984 & 1.00 \\
-RACD $\tau=0.4$ & 184.23 & 0.0009856 & 0.1990 & 0.00005 \\
+Baseline DiT-S/4 & 184.55 & 0.0010093 & 0.1546 & 0.00 \\
+Global Cyclic & 183.32 & 0.0009822 & 0.1953 & 1.00 \\
+RACD $\tau=0.2$ & 184.12 & 0.0009911 & 0.1997 & 0.0134 \\
 \bottomrule
 \end{tabular}
 \caption{Main comparison from the 256-image S/4 sweep.}
@@ -164,15 +164,15 @@ RACD $\tau=0.4$ & 184.23 & 0.0009856 & 0.1990 & 0.00005 \\
 \toprule
 $\tau$ & CMMD $\downarrow$ & Time (s/img) & Refined Fraction \\
 \midrule
-0.1 & 0.0009998 & 0.2004 & 0.684 \\
-0.2 & 0.0009911 & 0.2000 & 0.013 \\
-0.3 & 0.0009871 & 0.2003 & 0.0005 \\
-0.4 & 0.0009856 & 0.1990 & 0.00005 \\
-0.5 & 0.0009859 & 0.2006 & 0.000 \\
-0.6 & 0.0009859 & 0.2014 & 0.000 \\
-0.7 & 0.0009859 & 0.2004 & 0.000 \\
-0.8 & 0.0009859 & 0.2000 & 0.000 \\
-0.9 & 0.0009859 & 0.2001 & 0.000 \\
+0.1 & 0.0009998 & 0.1993 & 0.684 \\
+0.2 & 0.0009911 & 0.1997 & 0.013 \\
+0.3 & 0.0010064 & 0.1932 & 0.0005 \\
+0.4 & 0.0010202 & 0.1790 & 0.0001 \\
+0.5 & 0.0010160 & 0.1664 & 0.000004 \\
+0.6 & 0.0010095 & 0.1650 & 0.000 \\
+0.7 & 0.0010095 & 0.1656 & 0.000 \\
+0.8 & 0.0010095 & 0.1654 & 0.000 \\
+0.9 & 0.0010095 & 0.1658 & 0.000 \\
 \bottomrule
 \end{tabular}
 \caption{RACD threshold sweep.}
@@ -205,19 +205,20 @@ photorealistic.
 
 Global cyclic refinement produced the best FID and CMMD in this sweep. It
 improved FID from 184.55 to 183.32 and CMMD from 0.0010093 to 0.0009822, with
-generation time increasing from 0.1642 s/image to 0.1984 s/image. This confirms
+generation time increasing from 0.1546 s/image to 0.1953 s/image. This confirms
 that the cyclic denoising pass can improve sample fidelity, but at a measurable
 compute cost.
 
-The best RACD threshold selected by the normalized CMMD/time rule was
-$\tau=0.4$. RACD at this threshold improved over the baseline CMMD and nearly
-matched global cyclic CMMD, while the learned difficulty mask selected only a
-tiny fraction of latent locations. However, the measured wall-clock time was
-still close to global cyclic refinement because this implementation performs
-the masked denoising pass as a dense latent operation. Thus, the experiment
-validates the learned spatial difficulty map and thresholding logic, while a
-more optimized patch-sparse implementation would be needed to fully realize the
-intended wall-clock compute savings.
+The most meaningful RACD threshold was $\tau=0.2$: it improved over the
+baseline CMMD while refining only 1.34\% of latent locations, and came close to
+the global cyclic CMMD. Higher thresholds such as $\tau \ge 0.6$ became faster
+after adding an empty-mask skip, but they selected no regions and therefore
+collapsed to baseline behavior. The measured wall-clock time for the meaningful
+RACD point is still close to global cyclic refinement because this
+implementation performs the masked denoising pass as a dense latent operation.
+Thus, the experiment validates the learned spatial difficulty map and
+thresholding logic, while a more optimized patch-sparse implementation would be
+needed to fully realize the intended wall-clock compute savings.
 
 \section{Conclusion}
 
