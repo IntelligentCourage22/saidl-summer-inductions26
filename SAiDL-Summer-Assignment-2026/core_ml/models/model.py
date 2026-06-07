@@ -187,8 +187,10 @@ class TransformerLM(nn.Module):
         max_seq_len = cfg_get(model_cfg, "max_seq_len")
         dropout = cfg_get(model_cfg, "dropout")
         pe_type = cfg_get(model_cfg, "positional_encoding")
+        attention_type = cfg_get(model_cfg, "attention_type")
 
         self.max_seq_len = max_seq_len
+        self.uses_full_causal_mask = attention_type in {"standard", "gqa", "mqa"}
         self.embedding_scale = (
             math.sqrt(d_model) if cfg_get(model_cfg, "scale_embeddings", False) else 1.0
         )
@@ -222,8 +224,12 @@ class TransformerLM(nn.Module):
         x = self.token_emb(x) * self.embedding_scale
         x = self.pos_enc(x)
 
-        mask = torch.triu(torch.ones(seq_len, seq_len, device=x.device), diagonal=1)
-        mask = mask.bool()
+        mask = None
+        if self.uses_full_causal_mask:
+            mask = torch.triu(
+                torch.ones(seq_len, seq_len, device=x.device, dtype=torch.bool),
+                diagonal=1,
+            )
 
         for block in self.blocks:
             x = block(x, mask)

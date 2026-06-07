@@ -1,0 +1,31 @@
+{
+  "attention_type": "standard",
+  "positional_encoding": "sinusoidal",
+  "block_type": "standard",
+  "batch_size": 2,
+  "param_count": 44646912,
+  "device": "cuda",
+  "benchmarks": [
+    {
+      "seq_len": 512,
+      "batch_size": 2,
+      "avg_ms": 30.97,
+      "tokens_per_sec": 33068.5,
+      "peak_memory_mb": 382.0
+    },
+    {
+      "seq_len": 1024,
+      "batch_size": 2,
+      "avg_ms": 67.75,
+      "tokens_per_sec": 30230.8,
+      "peak_memory_mb": 581.1
+    },
+    {
+      "seq_len": 2048,
+      "batch_size": 2,
+      "avg_ms": 172.02,
+      "tokens_per_sec": 23811.6,
+      "peak_memory_mb": 981.5
+    }
+  ]
+}

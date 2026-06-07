@@ -1,7 +1,12 @@
 from types import SimpleNamespace
+import os
+import sys
+
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import pytest
 import torch
+import torch.nn.functional as F
 
 from models.model import TransformerLM
 
@@ -182,3 +187,86 @@ def test_alibi_slopes_match_paper_formula():
     slopes = AlibiBias._get_slopes(8)
     expected = [2 ** (-(i + 1)) for i in range(8)]
     assert slopes == pytest.approx(expected)
+
+
+def _full_matrix_sliding_window_reference(attn, x):
+    batch_size, seq_len, d_model = x.shape
+    window_size = min(attn.window_size, seq_len)
+
+    q = attn.q_proj(x).view(batch_size, seq_len, attn.n_heads, attn.d_head)
+    k = attn.k_proj(x).view(batch_size, seq_len, attn.n_heads, attn.d_head)
+    v = attn.v_proj(x).view(batch_size, seq_len, attn.n_heads, attn.d_head)
+
+    q = q.transpose(1, 2)
+    k = k.transpose(1, 2)
+    v = v.transpose(1, 2)
+
+    if attn.rotary is not None:
+        q, k = attn.rotary(q, k)
+
+    scores = torch.matmul(q, k.transpose(-2, -1)) / attn.scale
+    if attn.alibi is not None:
+        scores = scores + attn.alibi(seq_len, x.device, scores.dtype)
+    if attn.relative_bias is not None:
+        scores = scores + attn.relative_bias(seq_len, x.device)
+
+    idx = torch.arange(seq_len, device=x.device)
+    row = idx.unsqueeze(1)
+    col = idx.unsqueeze(0)
+    mask = (col > row) | ((row - col) >= window_size)
+    scores = scores.masked_fill(mask.unsqueeze(0).unsqueeze(0), float("-inf"))
+
+    attn_weights = F.softmax(scores, dim=-1)
+    attn_weights = torch.nan_to_num(attn_weights, nan=0.0)
+    out = torch.matmul(attn_weights, v)
+    out = out.transpose(1, 2).contiguous().view(batch_size, seq_len, d_model)
+    return attn.out_proj(out)
+
+
+@pytest.mark.parametrize(
+    "positional_encoding",
+    ["sinusoidal", "rope", "alibi", "relative"],
+)
+def test_sliding_window_matches_full_matrix_reference(positional_encoding):
+    from models.attention.sliding_window import SlidingWindowAttention
+
+    torch.manual_seed(0)
+    attn = SlidingWindowAttention(
+        d_model=32,
+        n_heads=4,
+        window_size=3,
+        dropout=0.0,
+        positional_encoding=positional_encoding,
+        max_seq_len=16,
+    )
+    attn.eval()
+
+    x = torch.randn(2, 7, 32)
+    actual = attn(x)
+    expected = _full_matrix_sliding_window_reference(attn, x)
+    assert torch.allclose(actual, expected, atol=1e-5)
+
+
+def test_sliding_window_scope_excludes_old_tokens():
+    from models.attention.sliding_window import SlidingWindowAttention
+
+    torch.manual_seed(1)
+    attn = SlidingWindowAttention(
+        d_model=32,
+        n_heads=4,
+        window_size=2,
+        dropout=0.0,
+        positional_encoding="sinusoidal",
+        max_seq_len=16,
+    )
+    attn.eval()
+
+    x = torch.randn(1, 5, 32)
+    x_corrupted = x.clone()
+    x_corrupted[:, 0] = x_corrupted[:, 0] + 100.0
+
+    with torch.no_grad():
+        out = attn(x)
+        out_corrupted = attn(x_corrupted)
+
+    assert torch.allclose(out[:, 4], out_corrupted[:, 4], atol=1e-5)

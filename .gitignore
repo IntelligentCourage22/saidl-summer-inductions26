@@ -20,3 +20,7 @@ checkpoints/
 *.log
 *.out
 *.synctex.gz
+
+# Local review/sync artifacts
+core_ml_review*.md
+diffusion_s4_*_artifacts/

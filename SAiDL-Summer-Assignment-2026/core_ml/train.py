@@ -83,11 +83,15 @@ def evaluate(model, loader, device, max_batches=None):
     return tracker.get_summary()
 
 
+def unwrap_model(model):
+    return model.module if isinstance(model, torch.nn.DataParallel) else model
+
+
 def save_checkpoint(path, model, optimizer, scheduler, step, config):
     path.parent.mkdir(parents=True, exist_ok=True)
     torch.save(
         {
-            "model": model.state_dict(),
+            "model": unwrap_model(model).state_dict(),
             "optimizer": optimizer.state_dict(),
             "scheduler": scheduler.state_dict(),
             "step": step,

@@ -25,7 +25,7 @@ mechanisms, positional encodings, and convolution-attention hybrid blocks.
 Assignment Component & Coverage \\
 \midrule
 Baseline Transformer & Standard causal Transformer trained at context length 1024. \\
-Attention variants & Standard, sliding-window/local, linear kernelized, MQA, and GQA are implemented; standard, sliding-window, linear, and GQA are evaluated at 1024 tokens. \\
+Attention variants & Standard, sliding-window/local, linear kernelized, MQA, and GQA are implemented; standard, sliding-window, linear, and GQA are compared at 1024 tokens for perplexity and at 512/1024/2048 tokens for latency and memory scaling. \\
 Positional encodings & Sinusoidal, RoPE, ALiBi, and learned relative position bias are implemented and evaluated. \\
 Extrapolation & Sinusoidal, RoPE, ALiBi, and relative-bias models trained at 512 tokens and evaluated at 512, 1024, and 2048 tokens. \\
 Hybrid blocks & Conv-before-attention, interleaved convolution, and gated-convolution FFN are implemented; conv-before and gated-conv are evaluated with the best GQA + ALiBi configuration. \\
@@ -104,6 +104,14 @@ comes with noticeably higher memory consumption and lower throughput. The
 sliding-window model performs worst in the current results, although that run
 was logged at a smaller training budget than the others and should therefore be
 treated as a preliminary comparison rather than a final conclusion.
+
+The assignment suggests evaluating attention variants across multiple context
+lengths such as 512, 1024, 2048, and 4096 where feasible. Under the available
+compute budget, I prioritized full training comparisons at the main 1024-token
+context, then measured forward-pass latency and memory scaling for the main
+attention variants at 512, 1024, and 2048 tokens. A full retraining grid over
+every attention variant and every context length is therefore left as a
+compute-bound extension rather than a missing architectural component.
 
 \section{Positional Encodings}
 
@@ -195,34 +203,45 @@ extrapolation is part of the evaluation criterion.
 
 \subsection{Latency Benchmark}
 
-I also benchmarked the selected GQA + ALiBi configuration across sequence
-lengths to quantify the cost of longer-context evaluation.
+I also benchmarked the main attention variants across sequence lengths to
+quantify the cost of longer-context evaluation. These measurements use dense
+forward passes with batch size 2 on the same GPU environment and are intended
+to compare architectural scaling rather than cached autoregressive decoding.
 
 \begin{table}[h]
 \centering
+\small
 \begin{tabular}{lrrrr}
 \toprule
 Model & Seq Len & Tokens/sec & Avg Latency (ms) & Peak Mem (MB) \\
 \midrule
-GQA + ALiBi & 512 & 25746.3 & 39.77 & 369.0 \\
-GQA + ALiBi & 1024 & 27236.4 & 75.19 & 568.1 \\
-GQA + ALiBi & 2048 & 20248.2 & 202.29 & 968.5 \\
+Standard & 512 & 33068.5 & 30.97 & 382.0 \\
+Standard & 1024 & 30230.8 & 67.75 & 581.1 \\
+Standard & 2048 & 23811.6 & 172.02 & 981.5 \\
+Sliding Window & 512 & 34221.8 & 29.92 & 382.0 \\
+Sliding Window & 1024 & 28788.1 & 71.14 & 581.1 \\
+Sliding Window & 2048 & 22128.3 & 185.10 & 1007.5 \\
+Linear & 512 & 22563.5 & 45.38 & 577.7 \\
+Linear & 1024 & 22390.7 & 91.47 & 972.5 \\
+Linear & 2048 & 22307.9 & 183.61 & 1763.5 \\
+GQA + ALiBi & 512 & 31897.5 & 32.10 & 369.0 \\
+GQA + ALiBi & 1024 & 27673.8 & 74.01 & 568.1 \\
+GQA + ALiBi & 2048 & 20359.0 & 201.19 & 968.5 \\
 \bottomrule
 \end{tabular}
-\caption{Inference latency benchmark for GQA + ALiBi with batch size 2.}
+\caption{Inference latency benchmark across attention variants with batch size 2. Standard, sliding-window, and linear rows use sinusoidal positions; the final selected model uses GQA + ALiBi.}
 \end{table}
 
 The benchmark shows the expected growth in latency and memory with sequence
-length, but the 2048-token setting remains practical on a single GPU in the
-assignment environment. Peak allocated memory stays below 1 GB during the
-forward-only benchmark at batch size 2, which makes the selected configuration
-usable for long-context evaluation even under constrained compute.
-
-The latency benchmark is reported for the final selected architecture rather
-than for every attention variant. Comparative latency baselines for standard,
-linear, and sliding-window attention are left as a low-cost extension. This
-choice prioritizes validating the selected model's long-context behavior and
-keeps the final report focused on the strongest configuration.
+length. Standard attention is fastest in this forward-only benchmark at 2048
+tokens, while GQA + ALiBi uses fewer parameters and slightly less memory. Linear
+attention has almost flat tokens/sec across sequence lengths, but its current
+implementation is memory-heavy because the cumulative kernel statistics are
+materialized with an additional head-dimension product. Sliding-window attention
+is competitive at 512 tokens but does not improve the 2048-token forward-pass
+latency in this implementation. Taken together with the validation perplexity
+results, the selected GQA + ALiBi model remains the best quality-oriented final
+choice, even though standard attention remains a strong raw-throughput baseline.
 
 \section{Convolution-Attention Hybrids}
 
@@ -262,11 +281,14 @@ augmentation whereas naive pre-attention convolution is not.
 The first major conclusion from the experiments is that not all efficient
 attention variants are equally useful in this setting. Sliding-window attention
 did not improve either quality or efficiency enough to justify its use at the
-tested budget. The implementation uses a full attention matrix with a local
-mask, so it should be interpreted as a locality ablation rather than a truly
-memory-efficient sparse attention kernel. Linear attention improved validation perplexity slightly over the
-standard baseline but required substantially more training memory and reduced
-throughput, which weakens its appeal as a practical replacement.
+tested budget, and the logged run should be interpreted as preliminary because
+it was trained for fewer steps than the other variants. The current
+implementation computes local key/value windows directly rather than
+materializing a full attention matrix, so its attention-score memory scales with
+sequence length times window size. Linear attention improved validation
+perplexity slightly over the standard baseline but required substantially more
+training memory and reduced throughput, which weakens its appeal as a practical
+replacement.
 
 GQA, in contrast, improved both language modeling quality and efficiency. It
 reduced validation perplexity from 351.41 to 333.78 while slightly lowering peak
@@ -327,10 +349,9 @@ more memory-intensive, while the conv-before-attention design performs worse.
 The main lesson from the ablation study is that long-context modeling quality in
 this setup depends strongly on choosing the right attention and positional
 components rather than only scaling the baseline Transformer. Future work in the
-same codebase should add comparative latency baselines for every attention type
-and a fuller multi-context retraining matrix, especially at 4096 tokens if
-compute allows. The current results already support GQA + ALiBi as the final
-Core ML submission model.
+same codebase should add a fuller multi-context retraining matrix, especially at
+4096 tokens if compute allows. The current results already support GQA + ALiBi
+as the final Core ML submission model.
 
 \section{Reproducibility Artifacts}
 

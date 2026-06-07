@@ -11,7 +11,7 @@ model:
   scale_embeddings: false      # set true for original Transformer sqrt(d_model) embedding scaling
   window_size: 256
   conv_kernel_size: 5
-  attention_type: "sliding_window"  # standard | sliding_window | linear | mqa | gqa
+  attention_type: "standard"  # standard | sliding_window | linear | mqa | gqa
   positional_encoding: "sinusoidal"  # sinusoidal | rope | alibi | relative | none
   block_type: "standard"          # swap: standard | conv_before | interleaved | gated_conv
 
@@ -39,6 +39,6 @@ data:
   num_workers: 2
 
 wandb:
-  enabled: true
+  enabled: false
   project: "SAiDL-LongContext"
   entity: ansh0-bits-pilani

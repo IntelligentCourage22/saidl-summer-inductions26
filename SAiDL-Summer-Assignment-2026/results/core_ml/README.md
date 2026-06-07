@@ -17,8 +17,9 @@ folders are intentionally excluded from git.
   position bias.
 - `standard_sinusoidal_512/`: Standard Transformer + sinusoidal baseline at
   context length 512 and its 512-to-2048 extrapolation results.
-- `benchmarks/latency_gqa_alibi.json`: Inference latency benchmark for GQA +
-  ALiBi at context lengths 512, 1024, and 2048.
+- `benchmarks/latency_*.json`: Inference latency benchmarks for standard,
+  sliding-window, linear, and GQA + ALiBi attention at context lengths 512,
+  1024, and 2048.
 - `experiment_summary.json`: Compact aggregate table containing the values used
   across the Core ML report.
 

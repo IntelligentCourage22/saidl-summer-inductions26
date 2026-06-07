@@ -14,12 +14,16 @@ Usage:
 import argparse
 import json
 import math
+import os
+import sys
 import time
 from pathlib import Path
 from types import SimpleNamespace
 
 import torch
 import yaml
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from data.dataset import get_dataloaders
 from models.model import TransformerLM
@@ -61,7 +65,11 @@ def load_checkpoint(checkpoint_path, device):
     config = ckpt["config"]
     cfg = to_namespace(config)
     model = TransformerLM(cfg).to(device)
-    model.load_state_dict(ckpt["model"])
+    state_dict = {
+        key[7:] if key.startswith("module.") else key: value
+        for key, value in ckpt["model"].items()
+    }
+    model.load_state_dict(state_dict)
     model.eval()
     return model, config, cfg
 
@@ -69,7 +77,7 @@ def load_checkpoint(checkpoint_path, device):
 def maybe_init_wandb(config, args, pe_type, attn_type, train_seq_len):
     """Reuse the checkpoint's W&B settings for extrapolation runs."""
     wandb_cfg = config.get("wandb", {})
-    if not wandb_cfg.get("enabled", False):
+    if not args.wandb:
         return None
 
     try:
@@ -127,6 +135,11 @@ def main():
         type=int,
         default=None,
         help="Max batches per eval (default: full validation set)",
+    )
+    parser.add_argument(
+        "--wandb",
+        action="store_true",
+        help="Log extrapolation metrics to W&B.",
     )
     args = parser.parse_args()
 
